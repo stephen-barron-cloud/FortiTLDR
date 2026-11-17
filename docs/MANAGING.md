@@ -1,0 +1,169 @@
+# Managing FortiTLDR
+
+The job's live files are on the server in
+**`/home/claude-agent/agents/jobs/fortitldr/`**. That folder is private, so:
+
+- always use `sudo` and type the **full path** (tab-completion doesn't work there)
+- don't `cd` into it, and don't loosen its permissions
+
+Changes to these files apply on the next run. No restart is needed.
+
+| File | What it controls | Who changes it |
+|---|---|---|
+| `feeds` | Which feeds and pages are watched | You, on the server |
+| `ignore` | Topics to skip | You, on the server |
+| `email`, `subject-prefix` | Recipient and subject tag | `install.sh`, from `config.env` |
+| `prompt.md`, `pre.sh`, `post.sh` | How the briefing is built | `install.sh`, from the repo |
+| `seen.json`, `snapshots/` | What has already been reported | The job itself |
+
+---
+
+## Add or remove sources
+
+```bash
+sudo nano /home/claude-agent/agents/jobs/fortitldr/feeds
+```
+
+One URL per line; `#` comments a line out. Save with **Ctrl+O, Enter**, exit with
+**Ctrl+X**.
+
+- **RSS/Atom feeds** work best: every new or changed post is reported.
+- **Plain web pages** work too: you get a text diff whenever the page changes. Pages
+  with dates, counters or ads in them can trigger an email every day, so use a feed
+  when the site has one.
+- **A new URL** is baselined silently on its first run, so you only hear about it
+  once something changes.
+- **A URL that fails** is listed at the bottom of that day's email. The others are
+  still checked.
+
+More official feeds are listed at <https://www.fortiguard.com/rss-feeds>. They all
+follow the pattern `https://filestore.fortinet.com/fortiguard/rss/<name>.xml`.
+
+## Ignore topics you don't care about
+
+```bash
+sudo nano /home/claude-agent/agents/jobs/fortitldr/ignore
+```
+
+```
+# Plain text = case-insensitive match anywhere in the item TITLE
+FortiClient
+FortiWeb
+Joomla
+
+# re: = regular expression (case-insensitive)
+re:^FortiAnalyzer\b
+re:\bFortiOS 6\.
+```
+
+- Only **titles** are checked, so an advisory that merely mentions a product in its
+  text isn't dropped by accident.
+- Ignored items are marked as seen and never come back.
+- The email ends with one line listing what was ignored, so you notice an over-broad rule.
+- If every change on a given day is ignored, no email is sent.
+- A broken `re:` line is skipped with a warning in the log.
+
+## Change the recipient, subject tag, SMTP server or schedule
+
+These settings live in `config.env` in your clone of the repo:
+
+```bash
+cd ~/FortiTLDR && nano config.env && sudo ./install.sh
+```
+
+When it asks about `.msmtprc`, answer **n** to keep your SMTP token, or **y** to
+enter a new one. You must answer **y** if you changed `FORTITLDR_FROM`, `SMTP_HOST`
+or `SMTP_PORT`.
+
+Schedule examples (systemd `OnCalendar` format):
+
+| Schedule | Value |
+|---|---|
+| Every day at 7:00 Central | `"*-*-* 07:00 America/Chicago"` |
+| Weekdays at 6:30 | `"Mon..Fri 06:30 America/Chicago"` |
+| Twice a day | `"*-*-* 07,16:00 America/Chicago"` |
+
+The timer adds a random delay of up to 3 minutes. If the server is off at the
+scheduled time, the run happens at boot.
+
+**Mail filter:** set up a rule that matches "Subject contains `[FortiTLDR]`" (or your
+tag). In Proton: **Settings → Filters → Add filter**.
+
+## Replace the SMTP token only
+
+Either re-run `sudo ./install.sh` and answer **y**, or edit the `password` line
+directly:
+
+```bash
+sudo nano /home/claude-agent/.msmtprc
+```
+
+## Replace the Claude token
+
+```bash
+sudo -u claude-agent -H /home/claude-agent/.local/bin/claude setup-token
+sudo nano /etc/claude-agent/env      # CLAUDE_CODE_OAUTH_TOKEN=<token>
+```
+
+The token must be one unbroken line with no quotes. See
+[TROUBLESHOOTING.md](TROUBLESHOOTING.md) if you get a `401`.
+
+## Test
+
+```bash
+# 1. Change check only: no Claude, no email, no usage
+sudo -u claude-agent -H bash -c 'cd ~/agents/jobs/fortitldr && ./pre.sh; echo "exit code: $?"'
+#    exit 3 = nothing new, 0 = a briefing would be sent, 1 = every feed failed
+#    see what it found:  sudo cat /home/claude-agent/agents/jobs/fortitldr/new-items.md
+
+# 2. Full run with a real email (pretends the newest item of the first feed is new)
+sudo -u claude-agent touch /home/claude-agent/agents/jobs/fortitldr/force-latest
+sudo systemctl start claude-job@fortitldr
+
+# 3. Test an ignore rule: add part of that newest title to `ignore`, repeat step 2,
+#    and look for "Ignored: ..." and "Nothing new - skipping Claude." in the log.
+```
+
+## Logs and past briefings
+
+```bash
+sudo journalctl -u claude-job@fortitldr -n 50 --no-pager -o cat      # last run
+sudo journalctl -u claude-job@fortitldr --since today --no-pager      # today
+sudo ls /home/claude-agent/agents/reports/fortitldr/                  # every briefing
+sudo cat /home/claude-agent/agents/reports/fortitldr/latest.md        # newest briefing
+sudo tail /home/claude-agent/.msmtp.log                               # email log
+systemctl list-timers 'claude-job-*' --no-pager                       # next run
+```
+
+## Pause, resume, uninstall
+
+```bash
+sudo systemctl disable --now claude-job-fortitldr.timer    # pause
+sudo /opt/claude-agent/add-job.sh fortitldr "*-*-* 07:00 America/Chicago"   # resume
+```
+
+To uninstall completely:
+
+```bash
+sudo systemctl disable --now claude-job-fortitldr.timer
+sudo rm -f /etc/systemd/system/claude-job-fortitldr.timer /etc/systemd/system/claude-job@.service
+sudo systemctl daemon-reload
+sudo rm -rf /opt/claude-agent /etc/claude-agent
+sudo userdel -r claude-agent
+```
+
+## Start over from scratch (forget everything seen)
+
+```bash
+sudo rm -rf /home/claude-agent/agents/jobs/fortitldr/{seen.json,snapshots}
+```
+
+The next run re-baselines every feed silently.
+
+## Keep Claude Code up to date
+
+Auto-updates are off (`CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1`). Update now and then:
+
+```bash
+sudo -u claude-agent -H /home/claude-agent/.local/bin/claude update
+```

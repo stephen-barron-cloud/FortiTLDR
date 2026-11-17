@@ -1,0 +1,13 @@
+[Unit]
+Description=Claude agent job %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=claude-agent
+EnvironmentFile=/etc/claude-agent/env
+WorkingDirectory=/home/claude-agent/agents
+ExecStart=/opt/claude-agent/run-job.sh %i
+TimeoutStartSec=30min
+Nice=10

@@ -1,0 +1,10 @@
+# Items whose TITLE matches any line below are skipped: no Claude, no email
+# section, and they are marked as seen so they never come back.
+# - Plain line = case-insensitive text match anywhere in the title.
+# - Line starting with re: = regular expression (case-insensitive).
+# Lines starting with # are comments. Remove the # to turn an example on.
+#
+#WordPress
+#Joomla
+#Ransomware
+#re:\bApple (iOS|macOS)\b

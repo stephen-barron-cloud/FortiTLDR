@@ -1,0 +1,34 @@
+# ---- Private settings: your email addresses, SMTP server, schedule ----
+config.env
+*.env
+!config.example.env
+
+# ---- Secrets: never commit these ----
+.msmtprc
+msmtprc
+*.token
+*token*.txt
+*.secret
+environment-secret
+.msmtp.log
+
+# ---- Runtime state (if you ever copy a job folder back from the server) ----
+seen.json
+seen.pending.json
+snapshots/
+reports/
+new-items.md
+subject
+force-latest
+
+# ---- OS / editor ----
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.vscode/
+.idea/
+
+# ---- Python ----
+__pycache__/
+*.pyc

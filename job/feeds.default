@@ -1,0 +1,23 @@
+# FortiTLDR sources. One URL per line; lines starting with # are ignored.
+# A newly added URL is silently baselined on its first run (no email flood).
+# Full list of FortiGuard feeds: https://www.fortiguard.com/rss-feeds
+
+# PSIRT security advisories (FG-IR-xx-xxx): vulnerabilities in Fortinet products
+https://filestore.fortinet.com/fortiguard/rss/ir.xml
+
+# Outbreak Alerts: actively exploited threats and the Fortinet coverage for them
+https://filestore.fortinet.com/fortiguard/rss/outbreakalert.xml
+
+# Threat Signal reports: emerging threats and recommended actions
+https://filestore.fortinet.com/fortiguard/rss/threatsignal.xml
+
+# Firmware releases: new builds for FortiOS, FortiManager, FortiAnalyzer, etc.
+https://support.fortinet.com/rss/firmware.xml
+
+# --- Optional (remove the # to enable) ---
+# Fortinet blog: product news and announcements (several posts a week)
+#https://feeds.fortinet.com/fortinet/blogs
+# Endpoint vulnerability database updates
+#https://filestore.fortinet.com/fortiguard/rss/epvuln.xml
+# Virtual patching (FortiGate) updates
+#https://filestore.fortinet.com/fortiguard/rss/fmwp.xml
