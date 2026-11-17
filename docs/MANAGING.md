@@ -36,8 +36,32 @@ One URL per line; `#` comments a line out. Save with **Ctrl+O, Enter**, exit wit
 - **A URL that fails** is listed at the bottom of that day's email. The others are
   still checked.
 
-More official feeds are listed at <https://www.fortiguard.com/rss-feeds>. They all
-follow the pattern `https://filestore.fortinet.com/fortiguard/rss/<name>.xml`.
+### Default feeds
+
+| Group | Feed | Notes |
+|---|---|---|
+| Security | `https://filestore.fortinet.com/fortiguard/rss/ir.xml` | PSIRT advisories (FG-IR-…) |
+| Security | `https://filestore.fortinet.com/fortiguard/rss/outbreakalert.xml` | Outbreak Alerts |
+| Security | `https://filestore.fortinet.com/fortiguard/rss/threatsignal.xml` | Threat Signal reports |
+| Releases and support | `https://support.fortinet.com/rss/firmware.xml` | Firmware releases |
+| Releases and support | `https://pub.kb.fortinet.com/rss/csb.xml` | Customer Support Bulletins (CSB-…) |
+| Product lifecycle | `https://support.fortinet.com/rss/Hardware.xml` | End of Order / End of Support dates (~1,500 items) |
+| Product lifecycle | `https://support.fortinet.com/rss/Software.xml` | End of Order / End of Support dates (~800 items) |
+| Product lifecycle | `https://support.fortinet.com/rss/Services.xml` | End of Order / End of Support dates |
+| Signature updates | `https://filestore.fortinet.com/fortiguard/rss/appcontrol.xml` | Application Control database |
+| Signature updates | `https://filestore.fortinet.com/fortiguard/rss/otips.xml` | OT IPS signatures |
+| Signature updates | `https://filestore.fortinet.com/fortiguard/rss/otapp.xml` | OT Application Control signatures |
+
+The lifecycle feeds are large but are baselined silently like any new URL, so you
+only hear about milestones added or changed after install. The signature-update
+feeds publish several times a week; comment them out if you don't need them.
+
+### More feeds
+
+The full catalogue of official FortiGuard feeds is at
+<https://www.fortiguard.com/rss-feeds>. Most follow the pattern
+`https://filestore.fortinet.com/fortiguard/rss/<name>.xml`; paste any of them into
+`feeds`.
 
 ## Ignore topics you don't care about
 

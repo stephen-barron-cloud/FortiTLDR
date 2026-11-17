@@ -5,7 +5,8 @@ to do about it.**
 
 FortiTLDR runs on a small Ubuntu server (for example, a VM in a Proxmox homelab). Every
 morning it checks Fortinet's official feeds for new security advisories, outbreak
-alerts, threat reports and firmware releases. When something is new, it has Claude
+alerts, threat reports, firmware releases, support bulletins, product lifecycle
+(End of Order / End of Support) changes and FortiGuard signature updates. When something is new, it has Claude
 read the details and email you a short briefing. An illustrative example:
 
 ```
@@ -29,16 +30,25 @@ Quiet days cost nothing: if no feed changed, Claude isn't called and no email is
 
 ## What it watches (by default)
 
-| Source | Feed |
-|---|---|
-| PSIRT security advisories | `https://filestore.fortinet.com/fortiguard/rss/ir.xml` |
-| Outbreak Alerts | `https://filestore.fortinet.com/fortiguard/rss/outbreakalert.xml` |
-| Threat Signal reports | `https://filestore.fortinet.com/fortiguard/rss/threatsignal.xml` |
-| Firmware releases | `https://support.fortinet.com/rss/firmware.xml` |
-| *Optional:* Fortinet blog, endpoint vulnerabilities, virtual patching | see [`job/feeds.default`](job/feeds.default) |
+| Group | Source | Feed |
+|---|---|---|
+| Security | PSIRT security advisories | `https://filestore.fortinet.com/fortiguard/rss/ir.xml` |
+| Security | Outbreak Alerts | `https://filestore.fortinet.com/fortiguard/rss/outbreakalert.xml` |
+| Security | Threat Signal reports | `https://filestore.fortinet.com/fortiguard/rss/threatsignal.xml` |
+| Releases and support | Firmware releases | `https://support.fortinet.com/rss/firmware.xml` |
+| Releases and support | Customer Support Bulletins | `https://pub.kb.fortinet.com/rss/csb.xml` |
+| Product lifecycle | Hardware End of Order / End of Support | `https://support.fortinet.com/rss/Hardware.xml` |
+| Product lifecycle | Software End of Order / End of Support | `https://support.fortinet.com/rss/Software.xml` |
+| Product lifecycle | Services End of Order / End of Support | `https://support.fortinet.com/rss/Services.xml` |
+| Signature updates | Application Control | `https://filestore.fortinet.com/fortiguard/rss/appcontrol.xml` |
+| Signature updates | OT IPS | `https://filestore.fortinet.com/fortiguard/rss/otips.xml` |
+| Signature updates | OT Application Control | `https://filestore.fortinet.com/fortiguard/rss/otapp.xml` |
+| *Optional* | Fortinet blog, endpoint vulnerabilities, virtual patching | see [`job/feeds.default`](job/feeds.default) |
 
-You can add any RSS/Atom feed or web page, and filter out topics you don't care about.
-See [docs/MANAGING.md](docs/MANAGING.md).
+The full catalogue of official FortiGuard feeds is at
+<https://www.fortiguard.com/rss-feeds>. You can add any of them, or any other RSS/Atom
+feed or web page, and filter out topics you don't care about (for example, the
+signature-update feeds if you don't run OT gear). See [docs/MANAGING.md](docs/MANAGING.md).
 
 ## How it works
 

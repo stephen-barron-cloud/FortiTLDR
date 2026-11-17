@@ -9,7 +9,7 @@ FortiTLDR's traffic is outbound.
 |---|---|---|
 | Claude (required) | `api.anthropic.com` → `160.79.104.0/23`, `153.61.224.0/22` | TCP 443 |
 | Claude Code installer and updates | `claude.ai`, `downloads.claude.ai` (CDN, so its IPs change) | TCP 443 |
-| Fortinet feeds | `filestore.fortinet.com`, `support.fortinet.com`, `feeds.fortinet.com` | TCP 443 |
+| Fortinet feeds | `filestore.fortinet.com`, `support.fortinet.com`, `pub.kb.fortinet.com`, `feeds.fortinet.com` (optional blog) | TCP 443 |
 | Pages Claude reads for details | `fortiguard.fortinet.com`, `www.fortinet.com`, plus the hosts of any feeds you add | TCP 443 |
 | Email | your SMTP server, e.g. `smtp.protonmail.ch` | TCP 587 |
 | DNS | your resolver only | 53 |

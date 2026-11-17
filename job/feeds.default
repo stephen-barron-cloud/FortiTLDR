@@ -2,6 +2,7 @@
 # A newly added URL is silently baselined on its first run (no email flood).
 # Full list of FortiGuard feeds: https://www.fortiguard.com/rss-feeds
 
+# ---- Security ----
 # PSIRT security advisories (FG-IR-xx-xxx): vulnerabilities in Fortinet products
 https://filestore.fortinet.com/fortiguard/rss/ir.xml
 
@@ -11,8 +12,28 @@ https://filestore.fortinet.com/fortiguard/rss/outbreakalert.xml
 # Threat Signal reports: emerging threats and recommended actions
 https://filestore.fortinet.com/fortiguard/rss/threatsignal.xml
 
+# ---- Releases and support ----
 # Firmware releases: new builds for FortiOS, FortiManager, FortiAnalyzer, etc.
 https://support.fortinet.com/rss/firmware.xml
+
+# Customer Support Bulletins (CSB-xxxxxx-x): known issues, delays, required actions
+https://pub.kb.fortinet.com/rss/csb.xml
+
+# ---- Product lifecycle: End of Order / End of Support milestones ----
+# Hardware (appliances, accessories, transceivers)
+https://support.fortinet.com/rss/Hardware.xml
+# Software (FortiOS and other product versions)
+https://support.fortinet.com/rss/Software.xml
+# Services (subscriptions and support SKUs)
+https://support.fortinet.com/rss/Services.xml
+
+# ---- FortiGuard signature updates (several a week) ----
+# Application Control database
+https://filestore.fortinet.com/fortiguard/rss/appcontrol.xml
+# Operational Technology (OT) IPS signatures
+https://filestore.fortinet.com/fortiguard/rss/otips.xml
+# Operational Technology (OT) Application Control signatures
+https://filestore.fortinet.com/fortiguard/rss/otapp.xml
 
 # --- Optional (remove the # to enable) ---
 # Fortinet blog: product news and announcements (several posts a week)
