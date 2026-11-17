@@ -38,7 +38,10 @@ Write the email body in plain text (no Markdown tables, no HTML):
    - Support bulletins (CSB): ID, title, one-line summary of the impact
    - Product lifecycle: product or SKU, category, and the End of Order / End of
      Support dates (one line each; group by product family; collapse long runs of
-     accessory or transceiver SKUs into a count)
+     accessory or transceiver SKUs into a count). Label each line Hardware & VM,
+     Software or Services, and end the group with the link
+     https://support.fortinet.com/welcome/#/lifecycle (the feed links don't lead
+     anywhere useful)
    - Signature updates: one line per feed with the database version and counts of
      added/modified signatures, naming only notable ones (widely used apps, VPN or
      remote-access tools, OT/ICS vendors)

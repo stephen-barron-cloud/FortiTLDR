@@ -45,14 +45,17 @@ One URL per line; `#` comments a line out. Save with **Ctrl+O, Enter**, exit wit
 | Security | `https://filestore.fortinet.com/fortiguard/rss/threatsignal.xml` | Threat Signal reports |
 | Releases and support | `https://support.fortinet.com/rss/firmware.xml` | Firmware releases |
 | Releases and support | `https://pub.kb.fortinet.com/rss/csb.xml` | Customer Support Bulletins (CSB-…) |
-| Product lifecycle | `https://support.fortinet.com/rss/Hardware.xml` | End of Order / End of Support dates (~1,500 items) |
-| Product lifecycle | `https://support.fortinet.com/rss/Software.xml` | End of Order / End of Support dates (~800 items) |
-| Product lifecycle | `https://support.fortinet.com/rss/Services.xml` | End of Order / End of Support dates |
+| Product lifecycle | `https://support.fortinet.com/rss/Hardware.xml` | Hardware & VM: End of Order / End of Support dates (~1,500 items) |
+| Product lifecycle | `https://support.fortinet.com/rss/Software.xml` | Software: End of Order / End of Support dates (~800 items) |
+| Product lifecycle | `https://support.fortinet.com/rss/Services.xml` | Services: End of Order / End of Support dates |
 | Signature updates | `https://filestore.fortinet.com/fortiguard/rss/appcontrol.xml` | Application Control database |
 | Signature updates | `https://filestore.fortinet.com/fortiguard/rss/otips.xml` | OT IPS signatures |
 | Signature updates | `https://filestore.fortinet.com/fortiguard/rss/otapp.xml` | OT Application Control signatures |
 
-The lifecycle feeds are large but are baselined silently like any new URL, so you
+The lifecycle feeds are the RSS versions of the Hardware & VM, Software and Services
+tabs on Fortinet's Product Life Cycle page,
+<https://support.fortinet.com/welcome/#/lifecycle>, which has the full tables and
+search. They are large but are baselined silently like any new URL, so you
 only hear about milestones added or changed after install. The signature-update
 feeds publish several times a week; comment them out if you don't need them.
 
