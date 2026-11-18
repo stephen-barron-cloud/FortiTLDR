@@ -81,6 +81,10 @@ One URL per line; `#` comments a line out. Save with **Ctrl+O, Enter**, exit wit
 | Signature updates | `https://filestore.fortinet.com/fortiguard/rss/appcontrol.xml` | Application Control database |
 | Signature updates | `https://filestore.fortinet.com/fortiguard/rss/otips.xml` | OT IPS signatures |
 | Signature updates | `https://filestore.fortinet.com/fortiguard/rss/otapp.xml` | OT Application Control signatures |
+| Security | `https://feeds.fortinet.com/fortinet/blog/threat-research` | Threat Research blog (FortiGuard Labs) |
+| News | `https://feeds.fortinet.com/fortinet/blog/ciso-collective` | CISO Collective blog |
+| News | `https://feeds.fortinet.com/fortinet/blog/industry-trends` | Industry Trends blog |
+| News | `https://feeds.fortinet.com/fortinet/press-releases` | Press releases |
 
 The lifecycle feeds are the RSS versions of the Hardware & VM, Software and Services
 tabs on Fortinet's Product Life Cycle page,

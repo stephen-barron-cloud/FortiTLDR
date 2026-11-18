@@ -12,6 +12,9 @@ import datetime, difflib, hashlib, html, json, os, re, sys, urllib.request
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
 
+# Line-buffer output so every line reaches the systemd journal.
+sys.stdout.reconfigure(line_buffering=True)
+
 STATE, PENDING, SNAP = "seen.json", "seen.pending.json", "snapshots"
 UA = {"User-Agent": "FortiTLDR/1.0 (+feed watcher)"}
 

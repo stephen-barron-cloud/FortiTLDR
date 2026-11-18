@@ -36,6 +36,16 @@ https://filestore.fortinet.com/fortiguard/rss/otips.xml
 # Operational Technology (OT) Application Control signatures
 https://filestore.fortinet.com/fortiguard/rss/otapp.xml
 
+# ---- Fortinet blog and news (shown last, under training and industry news) ----
+# CISO Collective: security hardening releases, Secure by Design, PSIRT process
+https://feeds.fortinet.com/fortinet/blog/ciso-collective
+# Threat Research (FortiGuard Labs): campaigns and malware analysis (shown under security)
+https://feeds.fortinet.com/fortinet/blog/threat-research
+# Industry Trends
+https://feeds.fortinet.com/fortinet/blog/industry-trends
+# Press releases
+https://feeds.fortinet.com/fortinet/press-releases
+
 # --- Optional (remove the # to enable) ---
 # Fortinet blog: product news and announcements (several posts a week)
 #https://feeds.fortinet.com/fortinet/blogs

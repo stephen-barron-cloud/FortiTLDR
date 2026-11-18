@@ -48,7 +48,11 @@ cost nothing, because Claude isn't called and no email is sent.
 | Signature updates | Application Control | `https://filestore.fortinet.com/fortiguard/rss/appcontrol.xml` |
 | Signature updates | OT IPS | `https://filestore.fortinet.com/fortiguard/rss/otips.xml` |
 | Signature updates | OT Application Control | `https://filestore.fortinet.com/fortiguard/rss/otapp.xml` |
-| *Optional* | Fortinet blog, endpoint vulnerabilities, virtual patching | see [`job/feeds.default`](job/feeds.default) |
+| Security | Threat Research blog (FortiGuard Labs) | `https://feeds.fortinet.com/fortinet/blog/threat-research` |
+| News | CISO Collective blog | `https://feeds.fortinet.com/fortinet/blog/ciso-collective` |
+| News | Industry Trends blog | `https://feeds.fortinet.com/fortinet/blog/industry-trends` |
+| News | Press releases | `https://feeds.fortinet.com/fortinet/press-releases` |
+| *Optional* | Full Fortinet blog, endpoint vulnerabilities, virtual patching | see [`job/feeds.default`](job/feeds.default) |
 
 The full catalogue of official FortiGuard feeds is at
 <https://www.fortiguard.com/rss-feeds>. The three lifecycle feeds are the RSS versions
