@@ -82,11 +82,28 @@ if force:
 os.makedirs(SNAP, exist_ok=True)
 
 merged, new, upd, ok, errors = dict(seen), [], [], [], []
+parsed = []
 for url in feeds:
     try:
-        items = parse(url, fetch(url))
+        parsed.append((url, parse(url, fetch(url))))
     except Exception as e:
-        errors.append(f"{url}: {e}"); print(f"WARN {url}: {e}", file=sys.stderr); continue
+        errors.append(f"{url}: {e}"); print(f"WARN {url}: {e}", file=sys.stderr)
+
+# Some IDs are not unique: Fortinet's lifecycle feeds repeat the same ID for different
+# rows, and some IDs appear in two feeds (e.g. Hardware + Services, OT IPS + OT App
+# Control). Colliding items get a feed+content-based ID so they don't overwrite each
+# other in seen.json and get reported as UPDATED on every run.
+counts = {}
+for url, items in parsed:
+    for i in items:
+        counts[i["guid"]] = counts.get(i["guid"], 0) + 1
+for url, items in parsed:
+    for i in items:
+        if counts[i["guid"]] > 1:
+            i["base"] = i["guid"]
+            i["guid"] = i["guid"] + "#" + sha(url + "\n" + i["hash"])[:16]
+
+for url, items in parsed:
     ok.append(url)
     snap = os.path.join(SNAP, sha(url)[:16] + ".txt")
     for i in items:
@@ -108,6 +125,12 @@ for url in feeds:
         seen = {**seen, **{i["guid"]: i["hash"] for i in items}}
     if force and url == feeds[0] and items:
         seen = {k: v for k, v in seen.items() if k != items[0]["guid"]}
+    # One-time upgrade: rows stored under an old colliding ID are already known,
+    # so record them silently under their new ID and drop the old one.
+    for i in items:
+        if "base" in i and i["guid"] not in seen and i["base"] in seen:
+            seen[i["guid"]] = i["hash"]
+            merged.pop(i["base"], None)
     for i in items:
         old = seen.get(i["guid"])
         if old is None:
