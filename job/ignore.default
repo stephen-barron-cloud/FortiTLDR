@@ -4,7 +4,14 @@
 # - Line starting with re: = regular expression (case-insensitive).
 # Lines starting with # are comments. Remove the # to turn an example on.
 #
+# - Line starting with category: = matches a product lifecycle item's Category
+#   (exact name, or category:re:<regex>), e.g. Accessory, Training, FortiFone.
+#   Applies to both new lifecycle announcements and the upcoming-milestones list.
+#
 #WordPress
 #Joomla
 #Ransomware
 #re:\bApple (iOS|macOS)\b
+#category:Accessory
+#category:Training
+#category:re:^Forti(Fone|Recorder)

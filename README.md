@@ -26,7 +26,12 @@ Firmware releases
 ...
 ```
 
-Quiet days cost nothing: if no feed changed, Claude isn't called and no email is sent.
+**Product lifecycle comes first.** Every briefing lists new End of Order / End of
+Support announcements and every Fortinet hardware, software and service milestone
+due in the next 90 days (configurable), minus anything on your ignore list. Because
+upcoming milestones almost always exist, the email arrives daily. Set
+`LIFECYCLE_DAYS=0` to go back to emailing only when a feed changes; then quiet days
+cost nothing, because Claude isn't called and no email is sent.
 
 ## What it watches (by default)
 
@@ -58,8 +63,9 @@ signature-update feeds if you don't run OT gear). See [docs/MANAGING.md](docs/MA
 systemd timer (e.g. 07:00 daily)
   └─ claude-job@fortitldr.service           runs as the unprivileged user "claude-agent"
        └─ /opt/claude-agent/run-job.sh fortitldr
-            1. pre.sh    fetch every feed, compare with the last run, apply the ignore list
-                         (nothing new → stop: no Claude usage, no email)
+            1. pre.sh    fetch every feed, compare with the last run, list lifecycle
+                         milestones due in the next LIFECYCLE_DAYS, apply the ignore list
+                         (nothing new or upcoming → stop: no Claude usage, no email)
             2. claude -p read the new items' pages and write the briefing
             3. msmtp     send it through your mail provider's SMTP server
             4. post.sh   mark the items as seen, only after the email was sent

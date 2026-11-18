@@ -32,6 +32,7 @@ CONFIG="${REPO_DIR}/config.env"
 . "${CONFIG}"
 : "${SMTP_HOST:=smtp.protonmail.ch}" "${SMTP_PORT:=587}" "${SUBJECT_PREFIX:=[FortiTLDR]}"
 : "${SCHEDULE:=*-*-* 07:00 America/Chicago}"
+[[ "${LIFECYCLE_DAYS:=90}" =~ ^[0-9]+$ ]] || die "LIFECYCLE_DAYS in config.env must be a whole number of days (0 = off)."
 for v in FORTITLDR_FROM FORTITLDR_TO; do
   val="${!v:-}"
   [[ "${val}" == *@*.* ]] || die "${v} in config.env is not an email address."
@@ -110,6 +111,7 @@ w() { printf '%s\n' "$2" > "${JOB_DIR}/$1"; chown "${AGENT_USER}:${AGENT_USER}" 
 w email          "${FORTITLDR_TO}"
 w subject-prefix "${SUBJECT_PREFIX}"
 w max-turns      "25"
+w lifecycle-days "${LIFECYCLE_DAYS}"
 chown -R "${AGENT_USER}:${AGENT_USER}" "${JOB_DIR}"
 
 # ---------- email (SMTP) ----------

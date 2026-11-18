@@ -4,8 +4,11 @@ RSS/Atom feeds: each item is tracked. Other pages: the visible text is tracked
 and a diff is produced when it changes.
 exit 3 = nothing changed; exit 0 = changes written to new-items.md, subject, tools.
 Touch 'force-latest' in this folder to treat the newest item of the first feed
-as new on the next run (for testing the email pipeline)."""
-import difflib, hashlib, html, json, os, re, sys, urllib.request
+as new on the next run (for testing the email pipeline).
+Product lifecycle items (End of Order / End of Support dates) whose milestones fall
+within the next N days (file 'lifecycle-days', default 90; 0 = off) are listed every
+run, so the briefing is sent daily while anything is upcoming."""
+import datetime, difflib, hashlib, html, json, os, re, sys, urllib.request
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
 
@@ -143,20 +146,31 @@ if not ok:
     print("Every URL failed to load:\n" + "\n".join(errors), file=sys.stderr); sys.exit(1)
 
 # Drop items whose TITLE matches a line in ./ignore (they are still marked as seen).
-patterns = []
+# "category:<text>" lines match a lifecycle item's Category instead of its title.
+def category(i):
+    m = re.search(r"Category:\s*([^,<]+)", i["desc"])
+    return m.group(1).strip() if m else ""
+
+patterns = []   # (field, compiled regex)
 if os.path.exists("ignore"):
     for line in open("ignore"):
         line = line.strip()
         if not line or line.startswith("#"):
             continue
+        field = "title"
+        if line.lower().startswith("category:"):
+            field, line = "category", line[9:].strip()
         if line.lower().startswith("re:"):
             try:
-                patterns.append(re.compile(line[3:].strip(), re.I))
+                patterns.append((field, re.compile(line[3:].strip(), re.I)))
             except re.error as e:
                 print(f"WARN bad regex in ignore file, skipped: {line} ({e})", file=sys.stderr)
+        elif field == "category":
+            patterns.append((field, re.compile(r"^" + re.escape(line) + r"$", re.I)))
         else:
-            patterns.append(re.compile(re.escape(line), re.I))
-is_ignored = lambda i: any(p.search(i["title"]) for p in patterns)
+            patterns.append((field, re.compile(re.escape(line), re.I)))
+is_ignored = lambda i: any(p.search(i["title"] if f == "title" else category(i))
+                           for f, p in patterns)
 skipped = [i for i in new + upd if is_ignored(i)]
 new = [i for i in new if not is_ignored(i)]
 upd = [i for i in upd if not is_ignored(i)]
@@ -165,16 +179,86 @@ for i in skipped:
 merged["__feeds__"] = sorted(known | set(ok))
 json.dump(merged, open(PENDING, "w"), indent=1)
 
-if not new and not upd:
+# ---- Upcoming product lifecycle milestones ----
+MILESTONE = re.compile(r"(End of Order|End of Engineering Support|Last Service Extension|"
+                       r"End of Support):\s*(\d{4}-\d{2}-\d{2})")
+def milestones(i):
+    out = []
+    for name, d in MILESTONE.findall(i["desc"]):
+        try:
+            out.append((name, datetime.date.fromisoformat(d)))
+        except ValueError:
+            pass
+    return out
+is_lifecycle = lambda i: bool(milestones(i))
+def lc_group(url):
+    name = url.rstrip("/").rsplit("/", 1)[-1].lower()
+    return ("Hardware & VM" if "hardware" in name else "Software" if "software" in name
+            else "Services" if "services" in name else url)
+
+try:
+    days = int(open("lifecycle-days").read().strip())
+except (FileNotFoundError, ValueError):
+    days = 90
+today = datetime.date.today()
+horizon = today + datetime.timedelta(days=days)
+upcoming, seen_rows = [], set()   # (soonest date, group, line)
+for url, items in parsed:
+    for i in items:
+        ms = milestones(i)
+        soon = [(n, d) for n, d in ms if today <= d <= horizon]
+        if days <= 0 or not soon or is_ignored(i):
+            continue
+        row = (i["title"], tuple(ms))
+        if row in seen_rows:          # identical row listed twice in the feeds
+            continue
+        seen_rows.add(row)
+        first = min(d for _, d in soon)
+        dates = "; ".join(f"{n} {d.isoformat()}" + (f" (in {(d - today).days} days)"
+                          if today <= d <= horizon else "") for n, d in ms)
+        cat = category(i)
+        upcoming.append((first, lc_group(url),
+                         f"- {i['title']}" + (f" [{cat}]" if cat else "") + f": {dates}"))
+upcoming.sort()
+
+if not new and not upd and not upcoming:
     os.replace(PENDING, STATE)
-    print(f"No changes across {len(ok)} source(s).")
+    print(f"No changes across {len(ok)} source(s) and no lifecycle milestones in the next {days} days.")
     sys.exit(3)
 
-blocks = []
-for label, group in (("NEW", new), ("UPDATED", upd)):
-    for i in group:
-        blocks.append(f"## [{label}] {i['title']}\n- Source: {i['src']}\n- Link: {i['link']}\n"
-                      f"- Published: {i['date'] or 'n/a'}\n- Summary: {i['desc'] or 'n/a'}\n")
+def item_block(label, i):
+    return (f"## [{label}] {i['title']}\n- Source: {i['src']}\n- Link: {i['link']}\n"
+            f"- Published: {i['date'] or 'n/a'}\n- Summary: {i['desc'] or 'n/a'}\n")
+
+lc_new = [i for i in new if is_lifecycle(i)]
+lc_upd = [i for i in upd if is_lifecycle(i)]
+other_new = [i for i in new if not is_lifecycle(i)]
+other_upd = [i for i in upd if not is_lifecycle(i)]
+
+blocks = [f"# Today is {today.isoformat()}\n",
+          "# PART 1: PRODUCT LIFECYCLE (End of Order / End of Support)\n"]
+if lc_new or lc_upd:
+    blocks.append("# Lifecycle announcements that are NEW or CHANGED since the last run\n")
+    blocks += [item_block(l, i) for l, g in (("NEW", lc_new), ("UPDATED", lc_upd)) for i in g]
+else:
+    blocks.append("No new or changed lifecycle announcements since the last run.\n")
+if days > 0:
+    blocks.append(f"# Upcoming lifecycle milestones: {len(upcoming)} item(s) with a date "
+                  f"between {today.isoformat()} and {horizon.isoformat()} (next {days} days)\n"
+                  "Sorted by the soonest upcoming date. All of each item's milestones are shown.\n")
+    for g in ("Hardware & VM", "Software", "Services"):
+        rows = [r for _, grp, r in upcoming if grp == g]
+        if rows:
+            blocks.append(f"## {g} ({len(rows)})\n" + "\n".join(rows) + "\n")
+    rows = [r for _, grp, r in upcoming if grp not in ("Hardware & VM", "Software", "Services")]
+    if rows:
+        blocks.append(f"## Other ({len(rows)})\n" + "\n".join(rows) + "\n")
+
+blocks.append("# PART 2: OTHER NEW OR UPDATED ITEMS (security, firmware, bulletins, signatures)\n")
+if other_new or other_upd:
+    blocks += [item_block(l, i) for l, g in (("NEW", other_new), ("UPDATED", other_upd)) for i in g]
+else:
+    blocks.append("None today.\n")
 if skipped:
     blocks.append("## Ignored by your ignore list (do not summarize)\n"
                   + "\n".join("- " + i["title"] for i in skipped) + "\n")
@@ -186,6 +270,13 @@ open("new-items.md", "w").write("\n".join(blocks))
 domains = sorted({urlparse(i["link"]).hostname for i in new + upd if urlparse(i["link"]).hostname})
 open("tools", "w").write("Read\n" + "".join(f"WebFetch(domain:{d})\n" for d in domains))
 
-titles = "; ".join(i["title"] for i in new + upd)
-open("subject", "w").write(f"{len(new)} new, {len(upd)} updated: {titles}"[:180].replace("\n", " "))
-print(f"{len(new)} new, {len(upd)} updated - handing to Claude.")
+soon30 = sum(1 for d, _, _ in upcoming if (d - today).days <= 30)
+subj = f"EoL/EoS: {len(lc_new) + len(lc_upd)} new/changed, {len(upcoming)} due in {days}d"
+if days > 30:
+    subj += f" ({soon30} in 30d)"
+if other_new or other_upd:
+    subj += f" | {len(other_new)} new, {len(other_upd)} updated: " + \
+            "; ".join(i["title"] for i in other_new + other_upd)
+open("subject", "w").write(subj[:180].replace("\n", " "))
+print(f"Lifecycle: {len(lc_new)} new, {len(lc_upd)} updated, {len(upcoming)} upcoming "
+      f"in {days}d; other: {len(other_new)} new, {len(other_upd)} updated - handing to Claude.")

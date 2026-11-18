@@ -8,11 +8,29 @@ The job's live files are on the server in
 
 Changes to these files apply on the next run. No restart is needed.
 
+## What the briefing covers
+
+Product lifecycle comes first. Every briefing lists:
+
+1. **New lifecycle announcements**: End of Order / End of Support items that are new
+   or changed in Fortinet's Hardware & VM, Software and Services lifecycle feeds.
+2. **Upcoming milestones**: every product whose End of Order, End of Engineering
+   Support, Last Service Extension or End of Support date falls in the next
+   `LIFECYCLE_DAYS` days (default 90), split into "within 30 days" and later. This
+   is recalculated on every run, so the email is sent daily while anything is
+   upcoming.
+3. Security advisories and other new items (PSIRT, outbreak alerts, firmware, CSBs,
+   signature updates), in shorter form.
+
+Products you don't care about can be removed with the `ignore` file (below). To change
+the window, set `LIFECYCLE_DAYS` in `config.env` and re-run `sudo ./install.sh`
+(`0` turns the upcoming list off).
+
 | File | What it controls | Who changes it |
 |---|---|---|
 | `feeds` | Which feeds and pages are watched | You, on the server |
 | `ignore` | Topics to skip | You, on the server |
-| `email`, `subject-prefix` | Recipient and subject tag | `install.sh`, from `config.env` |
+| `email`, `subject-prefix`, `lifecycle-days` | Recipient, subject tag, lifecycle window | `install.sh`, from `config.env` |
 | `prompt.md`, `pre.sh`, `post.sh` | How the briefing is built | `install.sh`, from the repo |
 | `seen.json`, `snapshots/` | What has already been reported | The job itself |
 
@@ -81,13 +99,23 @@ Joomla
 # re: = regular expression (case-insensitive)
 re:^FortiAnalyzer\b
 re:\bFortiOS 6\.
+
+# category: = a lifecycle item's Category (exact name, or category:re:<regex>)
+category:Accessory
+category:Training
+category:re:^Forti(Fone|Recorder)
 ```
 
-- Only **titles** are checked, so an advisory that merely mentions a product in its
-  text isn't dropped by accident.
+- Only **titles** are checked (or the **Category** for `category:` lines), so an
+  advisory that merely mentions a product in its text isn't dropped by accident.
+- Ignore rules also remove products from the **upcoming lifecycle milestones** list.
+  Lifecycle titles are model/SKU or version names (`FG-60F`, `FAN-336R-60F-60`,
+  `FortiOS 7.0`), and categories are product lines (`FortiGate`, `FortiSwitch`,
+  `Accessory`, `Training`…) as shown in brackets in the email.
 - Ignored items are marked as seen and never come back.
 - The email ends with one line listing what was ignored, so you notice an over-broad rule.
-- If every change on a given day is ignored, no email is sent.
+- If every change on a given day is ignored and no lifecycle milestone is upcoming,
+  no email is sent.
 - A broken `re:` line is skipped with a warning in the log.
 
 ## Change the recipient, subject tag, SMTP server or schedule
@@ -140,7 +168,8 @@ The token must be one unbroken line with no quotes. See
 ```bash
 # 1. Change check only: no Claude, no email, no usage
 sudo -u claude-agent -H bash -c 'cd ~/agents/jobs/fortitldr && ./pre.sh; echo "exit code: $?"'
-#    exit 3 = nothing new, 0 = a briefing would be sent, 1 = every feed failed
+#    exit 3 = nothing new and nothing upcoming, 0 = a briefing would be sent,
+#    1 = every feed failed
 #    see what it found:  sudo cat /home/claude-agent/agents/jobs/fortitldr/new-items.md
 
 # 2. Full run with a real email (pretends the newest item of the first feed is new)
