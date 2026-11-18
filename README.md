@@ -26,7 +26,8 @@ Firmware releases
 ...
 ```
 
-**Critical security announcements come first, then product lifecycle.** Every
+**Security comes first; product lifecycle comes last.** End of Order / End of Support
+dates are planning information, so they are never flagged red or orange. Every
 briefing lists new End of Order / End of Support announcements and every Fortinet hardware, software and service milestone
 due in the next 90 days (configurable), minus anything on your ignore list. Because
 upcoming milestones almost always exist, the email arrives daily. Set
@@ -71,8 +72,9 @@ systemd timer (e.g. 07:00 daily)
                          milestones due in the next LIFECYCLE_DAYS, apply the ignore list
                          (nothing new or upcoming → stop: no Claude usage, no email)
             2. claude -p read the new items' pages and write the briefing
-            3. msmtp     add the footer and send it through your mail provider's SMTP server
-            4. post.sh   mark the items as seen, only after the email was sent
+            3. render.py add the footer and build the HTML email (plain text included)
+            4. msmtp     send it through your mail provider's SMTP server
+            5. post.sh   mark the items as seen, only after the email was sent
 ```
 
 - **Claude** runs as [Claude Code in headless mode](https://code.claude.com/docs/en/headless)
@@ -158,6 +160,7 @@ FortiTLDR/
 │   ├── post.sh             Saves state after a successful send
 │   ├── prompt.md           Instructions Claude follows to write the briefing
 │   ├── footer              Footer added to every email (link to this repo)
+│   ├── render.py           Turns the briefing into the HTML email (colors, headings)
 │   ├── feeds.default       Starting list of feeds
 │   └── ignore.default      Starting ignore list (examples, all commented out)
 ├── runner/

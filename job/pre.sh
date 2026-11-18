@@ -251,6 +251,16 @@ def lc_line(i, ms):
     return (f"- {i['title']}" + (f" [{cat}]" if cat else "") +
             f" ({lc_group(i['feed'])}): {dates}")
 
+# Importance tag (rendered yellow / green in the HTML email). Lifecycle dates are
+# planning items, never security emergencies, so they never get [URGENT] or [HIGH]:
+# End of Support / End of Engineering Support within 30 days -> MEDIUM,
+# everything else -> LOW.
+def lc_tag(ms):
+    soon = [(n, d) for n, d in ms if today <= d <= horizon]
+    if any(d <= cut and "Support" in n for n, d in soon):
+        return "[MEDIUM]"
+    return "[LOW]"
+
 upcoming, seen_rows = [], set()   # (family, soonest date, line)
 for url, items in parsed:
     for i in items:
@@ -264,7 +274,7 @@ for url, items in parsed:
         seen_rows.add(row)
         first = min(d for _, d in soon)
         upcoming.append((family(i), first,
-                         ("SOON " if first <= cut else "") + lc_line(i, ms)))
+                         lc_tag(ms) + " " + lc_line(i, ms)[2:]))
 upcoming.sort(key=lambda u: (u[0], u[1], u[2]))
 
 if not new and not upd and not upcoming:
@@ -300,13 +310,17 @@ blocks += blocks_for(lambda i: i in sec) or ["None today.\n"]
 blocks.append("# PART 1b: FIRMWARE RELEASES AND SIGNATURE UPDATES\n")
 blocks += blocks_for(lambda i: i in ups) or ["None today.\n"]
 
-blocks.append("# PART 2: PRODUCT LIFECYCLE (End of Order / End of Support)\n"
+blocks.append("# PART 2: TRAINING, INDUSTRY NEWS, PRESS RELEASES AND OTHER BLOG POSTS\n")
+blocks += blocks_for(lambda i: i in news) or ["None today.\n"]
+
+blocks.append("# PART 3: PRODUCT LIFECYCLE (End of Order / End of Support)\n"
               "Product families are listed most commonly deployed first.\n")
 if lc_changed:
     blocks.append("## Lifecycle announcements that are NEW or CHANGED since the last run\n")
     for i in lc_changed:
         label = "NEW" if i in new else "UPDATED"
-        blocks.append(f"- [{label}] {family(i)[1]}: " + lc_line(i, milestones(i))[2:])
+        blocks.append(f"- {lc_tag(milestones(i))} [{label}] {family(i)[1]}: "
+                      + lc_line(i, milestones(i))[2:])
     blocks.append("")
 else:
     blocks.append("No new or changed lifecycle announcements since the last run.\n")
@@ -319,19 +333,16 @@ if days > 0:
     blocks.append(f"## Upcoming lifecycle milestones: {len(upcoming)} item(s) with a date "
                   f"between {today.isoformat()} and {horizon.isoformat()} (next {days} days)\n"
                   f"COUNTS (exact, computed by the script; use these, do not recount): "
-                  f"{len(upcoming)} in the next {days} days, {n30} of them within 30 days "
-                  f"(marked SOON).\n"
+                  f"{len(upcoming)} in the next {days} days, {n30} of them within 30 days.\n"
                   "Grouped by product family, most commonly deployed first; sorted by the "
                   "soonest upcoming date within each family. All of each item's milestones "
                   "are shown.\n")
     for f in fams:
         rows = [u[2] for u in upcoming if u[0][1] == f]
-        k = sum(1 for r in rows if r.startswith("SOON "))
+        k = sum(1 for u in upcoming if u[0][1] == f and u[1] <= cut)
+        rows = ["- " + r for r in rows]
         blocks.append(f"### {f} ({len(rows)}" + (f", {k} within 30 days" if k else "") + ")\n"
                       + "\n".join(rows) + "\n")
-
-blocks.append("# PART 3: TRAINING, INDUSTRY NEWS, PRESS RELEASES AND OTHER BLOG POSTS\n")
-blocks += blocks_for(lambda i: i in news) or ["None today.\n"]
 
 if skipped:
     blocks.append("## Ignored by your ignore list (do not summarize)\n"
@@ -348,12 +359,12 @@ soon30 = sum(1 for u in upcoming if u[1] <= cut)
 parts = []
 if sec:
     parts.append(f"Security: {len(sec)} - " + "; ".join(i["title"] for i in sec))
-parts.append(f"EoL/EoS: {len(lc_changed)} new/changed, {len(upcoming)} due in {days}d"
-             + (f" ({soon30} in 30d)" if days > 30 else ""))
 if ups:
     parts.append(f"{len(ups)} firmware/signature")
 if news:
     parts.append(f"{len(news)} news")
+parts.append(f"EoL/EoS: {len(lc_changed)} new/changed, {len(upcoming)} due in {days}d"
+             + (f" ({soon30} in 30d)" if days > 30 else ""))
 open("subject", "w").write(" | ".join(parts)[:180].replace("\n", " "))
 print(f"Security {len(sec)}, updates {len(ups)}, lifecycle {len(lc_changed)} new/changed + "
       f"{len(upcoming)} upcoming in {days}d, news {len(news)} - handing to Claude.")

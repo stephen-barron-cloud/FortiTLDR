@@ -12,22 +12,42 @@ Changes to these files apply on the next run. No restart is needed.
 
 Every briefing has four sections, most important first:
 
-1. **TL;DR**: the critical security items and what to do, the lifecycle headline,
-   and one line on news.
-2. **Critical security**: what needs action (critical/high PSIRT advisories,
-   anything exploited or in CISA KEV, CSBs that need you to act), each with a
-   "More info:" link; then other advisories, outbreak alerts, threat signals and
-   Threat Research posts; then firmware releases and signature updates.
-3. **Product lifecycle**: new End of Order / End of Support announcements, then every
+1. **TL;DR**: security items that need action and what to do, a clause on other
+   news, and one short sentence on upcoming lifecycle dates.
+2. **Security**: what needs action (critical/high PSIRT advisories, anything
+   exploited or in CISA KEV, CSBs that need you to act), each with a "More info:"
+   link; then other advisories, outbreak alerts, threat signals and Threat Research
+   posts; then firmware releases and signature updates.
+3. **Training, industry news and announcements**: press releases, CISO Collective,
+   Industry Trends and other blog posts.
+4. **Product lifecycle**: new End of Order / End of Support announcements, then every
    milestone due in the next `LIFECYCLE_DAYS` days (default 90). Both are grouped by
    product family, most commonly deployed first: FortiGate / FortiOS, FortiSwitch,
    FortiAP, FortiManager, FortiAnalyzer, FortiClient, FortiToken, FortiAuthenticator,
    FortiExtender, FortiCare/cloud services, then the rest alphabetically, with
-   accessories, modules and training last. Items due within 30 days are marked
-   SOON. The upcoming list is recalculated every run, so the email is sent daily
-   while anything is upcoming.
-4. **Training, industry news and announcements**: press releases, CISO Collective,
-   Industry Trends and other blog posts.
+   accessories, modules and training last. The upcoming list is recalculated every
+   run, so the email is sent daily while anything is upcoming. It comes last
+   because it is planning information, not a security emergency.
+
+The email is dark-themed HTML in a neutral system font, with a plain-text version for mail
+apps that don't show HTML. Items are color-coded by importance:
+
+| Color | Tag | Used for |
+|---|---|---|
+| Red | `URGENT` | Security only: critical (CVSS 9+), actively exploited or CISA KEV |
+| Orange | `HIGH` | Security only: high severity (CVSS 7-8.9), CSBs that need action, exploited outbreaks |
+| Yellow | `MEDIUM` | Medium severity; End of Support within 30 days |
+| Green | `LOW` | Informational: threat research, firmware, signatures, news, other lifecycle dates |
+
+Lifecycle items are never red or orange. The banner at the top follows the TL;DR,
+not the most severe item in the email. It is red only when that day's feeds report
+a new major security event or escalate an existing one (a new critical or exploited
+Fortinet advisory, a new CISA KEV listing, a new outbreak alert about an exploited
+Fortinet product, or an update that raises one of these). It is orange when other
+security action is needed, and green otherwise. Lifecycle dates, firmware and news
+never raise it. Lifecycle colors are set by `pre.sh`; security colors and the
+TL;DR tag are chosen by Claude using the rules in `prompt.md`. Each run also saves the HTML next to the text report
+(`reports/fortitldr/latest.html`).
 
 Every email ends with a footer linking to the GitHub repo (`job/footer`). The family
 order is the `FAMILIES` list in `job/pre.sh`.
@@ -41,7 +61,7 @@ the window, set `LIFECYCLE_DAYS` in `config.env` and re-run `sudo ./install.sh`
 | `feeds` | Which feeds and pages are watched | You, on the server |
 | `ignore` | Topics to skip | You, on the server |
 | `email`, `subject-prefix`, `lifecycle-days` | Recipient, subject tag, lifecycle window | `install.sh`, from `config.env` |
-| `prompt.md`, `pre.sh`, `post.sh`, `footer` | How the briefing is built | `install.sh`, from the repo |
+| `prompt.md`, `pre.sh`, `post.sh`, `footer`, `render.py` | How the briefing is built | `install.sh`, from the repo |
 | `seen.json`, `snapshots/` | What has already been reported | The job itself |
 
 ---

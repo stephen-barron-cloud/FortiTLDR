@@ -8,6 +8,8 @@
 #   subject    email subject (pre.sh may write this)
 #   subject-prefix  fixed tag put in front of every subject, e.g. [Watch]
 #   footer     text appended to every report/email after a "-- " separator
+#   render.py  executable; given the report path, prints an HTML version. The email
+#              is then sent as HTML with the report as its plain-text alternative.
 #   post.sh    runs after a successful report/email (e.g. to save state)
 set -euo pipefail
 JOB="${1:?usage: run-job.sh <job-name>}"
@@ -38,13 +40,38 @@ if [ -s footer ]; then printf '\n\n-- \n' >> "${OUT}"; cat footer >> "${OUT}"; f
 ln -sf "${OUT}" "${OUT_DIR}/latest.md"
 echo "Report written: ${OUT}"
 
+HTML=""
+if [ -x ./render.py ]; then
+  HTML="${OUT%.md}.html"
+  if ./render.py "${OUT}" > "${HTML}" && [ -s "${HTML}" ]; then
+    ln -sf "${HTML}" "${OUT_DIR}/latest.html"
+  else
+    echo "render.py failed - sending plain text only" >&2; HTML=""
+  fi
+fi
+
 if [ -f email ]; then
   TO="$(head -n1 email)"
   SUBJECT="$(head -n1 subject 2>/dev/null || echo "${JOB} report")"
   PREFIX="$(grep -vE '^\s*(#|$)' subject-prefix 2>/dev/null | head -n1 || true)"
   [ -n "${PREFIX}" ] && SUBJECT="${PREFIX} ${SUBJECT}"
-  { printf 'To: %s\nSubject: %s\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\n\n' "${TO}" "${SUBJECT}"
-    cat "${OUT}"; } | msmtp -t
+  # RFC 2047-encode the subject if it has non-ASCII characters (e.g. curly quotes)
+  if LC_ALL=C grep -q '[^ -~]' <<<"${SUBJECT}"; then
+    SUBJECT="=?UTF-8?B?$(printf '%s' "${SUBJECT}" | base64 -w0)?="
+  fi
+  if [ -n "${HTML}" ]; then
+    B="fortitldr-$(date +%s)-$$"
+    { printf 'To: %s\nSubject: %s\nMIME-Version: 1.0\n' "${TO}" "${SUBJECT}"
+      printf 'Content-Type: multipart/alternative; boundary="%s"\n\n' "${B}"
+      printf -- '--%s\nContent-Type: text/plain; charset=UTF-8\nContent-Transfer-Encoding: base64\n\n' "${B}"
+      base64 < "${OUT}"
+      printf -- '\n--%s\nContent-Type: text/html; charset=UTF-8\nContent-Transfer-Encoding: base64\n\n' "${B}"
+      base64 < "${HTML}"
+      printf -- '\n--%s--\n' "${B}"; } | msmtp -t
+  else
+    { printf 'To: %s\nSubject: %s\nMIME-Version: 1.0\nContent-Type: text/plain; charset=UTF-8\n\n' "${TO}" "${SUBJECT}"
+      cat "${OUT}"; } | msmtp -t
+  fi
   echo "Emailed ${TO}"
 fi
 
