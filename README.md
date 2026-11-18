@@ -67,7 +67,7 @@ systemd timer (e.g. 07:00 daily)
                          milestones due in the next LIFECYCLE_DAYS, apply the ignore list
                          (nothing new or upcoming → stop: no Claude usage, no email)
             2. claude -p read the new items' pages and write the briefing
-            3. msmtp     send it through your mail provider's SMTP server
+            3. msmtp     add the footer and send it through your mail provider's SMTP server
             4. post.sh   mark the items as seen, only after the email was sent
 ```
 
@@ -153,6 +153,7 @@ FortiTLDR/
 │   ├── pre.sh              Feed fetch, change detection, ignore list
 │   ├── post.sh             Saves state after a successful send
 │   ├── prompt.md           Instructions Claude follows to write the briefing
+│   ├── footer              Footer added to every email (link to this repo)
 │   ├── feeds.default       Starting list of feeds
 │   └── ignore.default      Starting ignore list (examples, all commented out)
 ├── runner/

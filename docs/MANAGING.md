@@ -10,19 +10,27 @@ Changes to these files apply on the next run. No restart is needed.
 
 ## What the briefing covers
 
-Critical security announcements come first, then product lifecycle. Every briefing lists:
+Every briefing has four sections, most important first:
 
-1. **Security action needed**: critical or high severity PSIRT advisories and
-   anything actively exploited or in CISA KEV, with the fixed version to upgrade to.
-2. **New lifecycle announcements**: End of Order / End of Support items that are new
-   or changed in Fortinet's Hardware & VM, Software and Services lifecycle feeds.
-3. **Upcoming milestones**: every product whose End of Order, End of Engineering
-   Support, Last Service Extension or End of Support date falls in the next
-   `LIFECYCLE_DAYS` days (default 90), split into "within 30 days" and later. This
-   is recalculated on every run, so the email is sent daily while anything is
-   upcoming.
-4. **Other updates**: advisory details, outbreak alerts, firmware, CSBs and
-   signature updates, in shorter form.
+1. **TL;DR**: the critical security items and what to do, the lifecycle headline,
+   and one line on news.
+2. **Critical security**: what needs action (critical/high PSIRT advisories,
+   anything exploited or in CISA KEV, CSBs that need you to act), each with a
+   "More info:" link; then other advisories, outbreak alerts, threat signals and
+   Threat Research posts; then firmware releases and signature updates.
+3. **Product lifecycle**: new End of Order / End of Support announcements, then every
+   milestone due in the next `LIFECYCLE_DAYS` days (default 90). Both are grouped by
+   product family, most commonly deployed first: FortiGate / FortiOS, FortiSwitch,
+   FortiAP, FortiManager, FortiAnalyzer, FortiClient, FortiToken, FortiAuthenticator,
+   FortiExtender, FortiCare/cloud services, then the rest alphabetically, with
+   accessories, modules and training last. Items due within 30 days are marked
+   SOON. The upcoming list is recalculated every run, so the email is sent daily
+   while anything is upcoming.
+4. **Training, industry news and announcements**: press releases, CISO Collective,
+   Industry Trends and other blog posts.
+
+Every email ends with a footer linking to the GitHub repo (`job/footer`). The family
+order is the `FAMILIES` list in `job/pre.sh`.
 
 Products you don't care about can be removed with the `ignore` file (below). To change
 the window, set `LIFECYCLE_DAYS` in `config.env` and re-run `sudo ./install.sh`
@@ -33,7 +41,7 @@ the window, set `LIFECYCLE_DAYS` in `config.env` and re-run `sudo ./install.sh`
 | `feeds` | Which feeds and pages are watched | You, on the server |
 | `ignore` | Topics to skip | You, on the server |
 | `email`, `subject-prefix`, `lifecycle-days` | Recipient, subject tag, lifecycle window | `install.sh`, from `config.env` |
-| `prompt.md`, `pre.sh`, `post.sh` | How the briefing is built | `install.sh`, from the repo |
+| `prompt.md`, `pre.sh`, `post.sh`, `footer` | How the briefing is built | `install.sh`, from the repo |
 | `seen.json`, `snapshots/` | What has already been reported | The job itself |
 
 ---

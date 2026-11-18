@@ -102,6 +102,7 @@ inst() { install -o "${AGENT_USER}" -g "${AGENT_USER}" -m "$1" "$2" "$3"; }
 inst 755 "${REPO_DIR}/job/pre.sh"    "${JOB_DIR}/pre.sh"
 inst 755 "${REPO_DIR}/job/post.sh"   "${JOB_DIR}/post.sh"
 inst 644 "${REPO_DIR}/job/prompt.md" "${JOB_DIR}/prompt.md"
+inst 644 "${REPO_DIR}/job/footer"    "${JOB_DIR}/footer"
 # Created once; after that you manage them on the server:
 [ -f "${JOB_DIR}/feeds" ]  || inst 644 "${REPO_DIR}/job/feeds.default"  "${JOB_DIR}/feeds"
 [ -f "${JOB_DIR}/ignore" ] || inst 644 "${REPO_DIR}/job/ignore.default" "${JOB_DIR}/ignore"

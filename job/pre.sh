@@ -102,6 +102,7 @@ for url, items in parsed:
         counts[i["guid"]] = counts.get(i["guid"], 0) + 1
 for url, items in parsed:
     for i in items:
+        i["feed"] = url
         if counts[i["guid"]] > 1:
             i["base"] = i["guid"]
             i["guid"] = i["guid"] + "#" + sha(url + "\n" + i["hash"])[:16]
@@ -196,13 +197,58 @@ def lc_group(url):
     return ("Hardware & VM" if "hardware" in name else "Software" if "software" in name
             else "Services" if "services" in name else url)
 
+# Lifecycle items are ordered by how widely deployed the product family is.
+# (label, regex on the family key) - most common first; unmatched families follow
+# alphabetically, then accessories, modules, training and professional services.
+FAMILIES = [
+    ("FortiGate / FortiOS", r"^(FortiGate(?!-?ONE|Voice)|FortiOS|FortiCarrier|FortiController|FortiChassis)"),
+    ("FortiSwitch", r"^(FortiSwitch|FortiLink)"),
+    ("FortiAP / Wireless", r"^(FortiAP|ControllerWireless|Meru|FortiWLC|FortiWLM|FortiWiFi)"),
+    ("FortiManager", r"^FortiManager"),
+    ("FortiAnalyzer", r"^FortiAnalyzer"),
+    ("FortiClient / EMS", r"^(FortiClient|FortiEndpoint)"),
+    ("FortiToken", r"^FortiToken"),
+    ("FortiAuthenticator", r"^FortiAuthenticator"),
+    ("FortiExtender", r"^FortiExtender"),
+    ("FortiCare / FortiGuard / Cloud services", r"^(FortiCare|FortiCloud|LicensesAndServices|FortiGuard)"),
+    ("FortiSASE", r"^FortiSASE"),
+    ("FortiEDR", r"^(FortiEDR|enSilo)"),
+    ("FortiMail", r"^FortiMail"),
+    ("FortiWeb", r"^FortiWeb"),
+    ("FortiSandbox", r"^FortiSandbox"),
+    ("FortiNAC", r"^FortiNAC"),
+    ("FortiSIEM", r"^FortiSIEM"),
+    ("FortiProxy", r"^FortiProxy"),
+    ("FortiADC", r"^FortiADC"),
+]
+LAST = r"^(Accessory|Modules|Training|ProfessionalServices)$"
+def family(i):
+    """(rank, label) for a lifecycle item; key = Category, or product name for Software."""
+    key = category(i) or re.sub(r"\s+v?\d.*$", "", i["title"])
+    key = re.sub(r"\s*\(.*?\)", "", key).strip()   # "FortiPortal (Formerly ...)" -> "FortiPortal"
+    for n, (label, rx) in enumerate(FAMILIES):
+        if re.search(rx, key, re.I):
+            return (n, label)
+    if re.search(LAST, key, re.I):
+        return (len(FAMILIES) + 2, key)
+    return (len(FAMILIES) + 1, key)
+
 try:
     days = int(open("lifecycle-days").read().strip())
 except (FileNotFoundError, ValueError):
     days = 90
 today = datetime.date.today()
 horizon = today + datetime.timedelta(days=days)
-upcoming, seen_rows = [], set()   # (soonest date, group, line)
+cut = today + datetime.timedelta(days=30)
+
+def lc_line(i, ms):
+    dates = "; ".join(f"{n} {d.isoformat()}" + (f" (in {(d - today).days} days)"
+                      if today <= d <= horizon else "") for n, d in ms)
+    cat = category(i)
+    return (f"- {i['title']}" + (f" [{cat}]" if cat else "") +
+            f" ({lc_group(i['feed'])}): {dates}")
+
+upcoming, seen_rows = [], set()   # (family, soonest date, line)
 for url, items in parsed:
     for i in items:
         ms = milestones(i)
@@ -214,64 +260,76 @@ for url, items in parsed:
             continue
         seen_rows.add(row)
         first = min(d for _, d in soon)
-        dates = "; ".join(f"{n} {d.isoformat()}" + (f" (in {(d - today).days} days)"
-                          if today <= d <= horizon else "") for n, d in ms)
-        cat = category(i)
-        upcoming.append((first, lc_group(url),
-                         f"- {i['title']}" + (f" [{cat}]" if cat else "") + f": {dates}"))
-upcoming.sort()
+        upcoming.append((family(i), first,
+                         ("SOON " if first <= cut else "") + lc_line(i, ms)))
+upcoming.sort(key=lambda u: (u[0], u[1], u[2]))
 
 if not new and not upd and not upcoming:
     os.replace(PENDING, STATE)
     print(f"No changes across {len(ok)} source(s) and no lifecycle milestones in the next {days} days.")
     sys.exit(3)
 
+# Non-lifecycle items, by the kind of feed they came from.
+def kind(i):
+    u = i["feed"].lower()
+    if re.search(r"/rss/(ir|outbreakalert|threatsignal|epvuln|fmwp)\.xml$|csb\.xml$|/blog/threat-research|/blog/psirt", u):
+        return "security"
+    if re.search(r"/rss/firmware\.xml$|filestore\.fortinet\.com/fortiguard/rss/", u):
+        return "updates"
+    return "news"
+
 def item_block(label, i):
     return (f"## [{label}] {i['title']}\n- Source: {i['src']}\n- Link: {i['link']}\n"
             f"- Published: {i['date'] or 'n/a'}\n- Summary: {i['desc'] or 'n/a'}\n")
+def blocks_for(pred):
+    return [item_block(l, i) for l, g in (("NEW", new), ("UPDATED", upd)) for i in g if pred(i)]
 
-lc_new = [i for i in new if is_lifecycle(i)]
-lc_upd = [i for i in upd if is_lifecycle(i)]
-other_new = [i for i in new if not is_lifecycle(i)]
-other_upd = [i for i in upd if not is_lifecycle(i)]
+lc_changed = sorted([i for i in new + upd if is_lifecycle(i)], key=lambda i: family(i))
+sec = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "security"]
+ups = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "updates"]
+news = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "news"]
 
-blocks = [f"# Today is {today.isoformat()}\n",
-          "# PART 1: PRODUCT LIFECYCLE (End of Order / End of Support)\n"]
-if lc_new or lc_upd:
-    blocks.append("# Lifecycle announcements that are NEW or CHANGED since the last run\n")
-    blocks += [item_block(l, i) for l, g in (("NEW", lc_new), ("UPDATED", lc_upd)) for i in g]
+blocks = [f"# Today is {today.isoformat()}\n"]
+
+blocks.append("# PART 1: SECURITY (PSIRT advisories, outbreak alerts, threat signals, "
+              "threat research, support bulletins)\n")
+blocks += blocks_for(lambda i: i in sec) or ["None today.\n"]
+blocks.append("# PART 1b: FIRMWARE RELEASES AND SIGNATURE UPDATES\n")
+blocks += blocks_for(lambda i: i in ups) or ["None today.\n"]
+
+blocks.append("# PART 2: PRODUCT LIFECYCLE (End of Order / End of Support)\n"
+              "Product families are listed most commonly deployed first.\n")
+if lc_changed:
+    blocks.append("## Lifecycle announcements that are NEW or CHANGED since the last run\n")
+    for i in lc_changed:
+        label = "NEW" if i in new else "UPDATED"
+        blocks.append(f"- [{label}] {family(i)[1]}: " + lc_line(i, milestones(i))[2:])
+    blocks.append("")
 else:
     blocks.append("No new or changed lifecycle announcements since the last run.\n")
 if days > 0:
-    groups = ("Hardware & VM", "Software", "Services", "Other")
-    grp_of = lambda g: g if g in groups[:3] else "Other"
-    cut = today + datetime.timedelta(days=30)
-    windows = [("Within 30 days", [u for u in upcoming if u[0] <= cut]),
-               ("31 days and later", [u for u in upcoming if u[0] > cut])]
-    def tally(rows):
-        parts = [f"{g} {n}" for g in groups if (n := sum(1 for u in rows if grp_of(u[1]) == g))]
-        return f"{len(rows)}" + (f" ({', '.join(parts)})" if parts else "")
-    blocks.append(f"# Upcoming lifecycle milestones: {len(upcoming)} item(s) with a date "
+    n30 = sum(1 for u in upcoming if u[1] <= cut)
+    fams = []
+    for u in upcoming:
+        if u[0][1] not in fams:
+            fams.append(u[0][1])
+    blocks.append(f"## Upcoming lifecycle milestones: {len(upcoming)} item(s) with a date "
                   f"between {today.isoformat()} and {horizon.isoformat()} (next {days} days)\n"
-                  f"COUNTS (exact, computed by the script; quote these, do not recount): "
-                  f"total {tally(upcoming)}; within 30 days {tally(windows[0][1])}; "
-                  f"31 days and later {tally(windows[1][1])}.\n"
-                  "Items are placed by their soonest upcoming date and sorted by it. "
-                  "All of each item's milestones are shown.\n")
-    for wname, wrows in windows:
-        if not wrows:
-            continue
-        blocks.append(f"## {wname} ({len(wrows)})\n")
-        for g in groups:
-            rows = [r for _, grp, r in wrows if grp_of(grp) == g]
-            if rows:
-                blocks.append(f"### {g} ({len(rows)})\n" + "\n".join(rows) + "\n")
+                  f"COUNTS (exact, computed by the script; use these, do not recount): "
+                  f"{len(upcoming)} in the next {days} days, {n30} of them within 30 days "
+                  f"(marked SOON).\n"
+                  "Grouped by product family, most commonly deployed first; sorted by the "
+                  "soonest upcoming date within each family. All of each item's milestones "
+                  "are shown.\n")
+    for f in fams:
+        rows = [u[2] for u in upcoming if u[0][1] == f]
+        k = sum(1 for r in rows if r.startswith("SOON "))
+        blocks.append(f"### {f} ({len(rows)}" + (f", {k} within 30 days" if k else "") + ")\n"
+                      + "\n".join(rows) + "\n")
 
-blocks.append("# PART 2: OTHER NEW OR UPDATED ITEMS (security, firmware, bulletins, signatures)\n")
-if other_new or other_upd:
-    blocks += [item_block(l, i) for l, g in (("NEW", other_new), ("UPDATED", other_upd)) for i in g]
-else:
-    blocks.append("None today.\n")
+blocks.append("# PART 3: TRAINING, INDUSTRY NEWS, PRESS RELEASES AND OTHER BLOG POSTS\n")
+blocks += blocks_for(lambda i: i in news) or ["None today.\n"]
+
 if skipped:
     blocks.append("## Ignored by your ignore list (do not summarize)\n"
                   + "\n".join("- " + i["title"] for i in skipped) + "\n")
@@ -283,13 +341,16 @@ open("new-items.md", "w").write("\n".join(blocks))
 domains = sorted({urlparse(i["link"]).hostname for i in new + upd if urlparse(i["link"]).hostname})
 open("tools", "w").write("Read\n" + "".join(f"WebFetch(domain:{d})\n" for d in domains))
 
-soon30 = sum(1 for d, _, _ in upcoming if (d - today).days <= 30)   # same rule as COUNTS
-subj = f"EoL/EoS: {len(lc_new) + len(lc_upd)} new/changed, {len(upcoming)} due in {days}d"
-if days > 30:
-    subj += f" ({soon30} in 30d)"
-if other_new or other_upd:
-    subj += f" | {len(other_new)} new, {len(other_upd)} updated: " + \
-            "; ".join(i["title"] for i in other_new + other_upd)
-open("subject", "w").write(subj[:180].replace("\n", " "))
-print(f"Lifecycle: {len(lc_new)} new, {len(lc_upd)} updated, {len(upcoming)} upcoming "
-      f"in {days}d; other: {len(other_new)} new, {len(other_upd)} updated - handing to Claude.")
+soon30 = sum(1 for u in upcoming if u[1] <= cut)
+parts = []
+if sec:
+    parts.append(f"Security: {len(sec)} - " + "; ".join(i["title"] for i in sec))
+parts.append(f"EoL/EoS: {len(lc_changed)} new/changed, {len(upcoming)} due in {days}d"
+             + (f" ({soon30} in 30d)" if days > 30 else ""))
+if ups:
+    parts.append(f"{len(ups)} firmware/signature")
+if news:
+    parts.append(f"{len(news)} news")
+open("subject", "w").write(" | ".join(parts)[:180].replace("\n", " "))
+print(f"Security {len(sec)}, updates {len(ups)}, lifecycle {len(lc_changed)} new/changed + "
+      f"{len(upcoming)} upcoming in {days}d, news {len(news)} - handing to Claude.")

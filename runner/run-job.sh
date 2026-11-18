@@ -7,6 +7,7 @@
 #   email      first line = address to email the report to (uses ~/.msmtprc)
 #   subject    email subject (pre.sh may write this)
 #   subject-prefix  fixed tag put in front of every subject, e.g. [Watch]
+#   footer     text appended to every report/email after a "-- " separator
 #   post.sh    runs after a successful report/email (e.g. to save state)
 set -euo pipefail
 JOB="${1:?usage: run-job.sh <job-name>}"
@@ -33,6 +34,7 @@ OUT_DIR="${BASE}/reports/${JOB}"; mkdir -p "${OUT_DIR}"
 OUT="${OUT_DIR}/$(date +%F_%H%M).md"
 if ! "${CLAUDE_BIN}" "${ARGS[@]}" > "${OUT}"; then echo "Claude failed:" >&2; cat "${OUT}" >&2; exit 1; fi
 [ -s "${OUT}" ] || { echo "Claude returned an empty report"; exit 1; }
+if [ -s footer ]; then printf '\n\n-- \n' >> "${OUT}"; cat footer >> "${OUT}"; fi
 ln -sf "${OUT}" "${OUT_DIR}/latest.md"
 echo "Report written: ${OUT}"
 
