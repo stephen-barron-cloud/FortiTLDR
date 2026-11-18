@@ -6,7 +6,7 @@ Usage: render.py report.md > report.html
 Understands only what prompt.md asks Claude to write:
   # Heading / ## Subheading / ### Group heading
   - bullet            (an indented line right after a bullet continues it)
-  [URGENT] [HIGH] [MEDIUM] [LOW] at the start of a bullet or paragraph
+  [URGENT] [HIGH] [MEDIUM] [LOW] [INFO] at the start of a bullet or paragraph
   **bold**, bare URLs (made clickable), blank lines between paragraphs
   "-- " on its own line starts the footer
 The status banner follows the tag on the TL;DR (the first section), not the most
@@ -26,9 +26,10 @@ LEVELS = {
     "HIGH":   ("High",   "#ffb067", "#3a2a1b"),
     "MEDIUM": ("Medium", "#ecc75a", "#353019"),
     "LOW":    ("Low",    "#6fcf86", "#1c3123"),
+    "INFO":   ("Info",   "#9aa3ad", "#272b31"),   # grey: no priority
 }
-ORDER = ["URGENT", "HIGH", "MEDIUM", "LOW"]
-TAG = re.compile(r"^\[(URGENT|HIGH|MEDIUM|LOW)\]\s*")
+ORDER = ["URGENT", "HIGH", "MEDIUM", "LOW", "INFO"]
+TAG = re.compile(r"^\[(URGENT|HIGH|MEDIUM|LOW|INFO)\]\s*")
 URL = re.compile(r"(https?://[^\s<>\"')\]]+[^\s<>\"').,;:\]])")
 
 
@@ -150,7 +151,8 @@ def render(src):
         status = {"URGENT": "New or escalated major security event",
                   "HIGH": "Security action needed",
                   "MEDIUM": "Nothing urgent; items to plan for",
-                  "LOW": "No critical security events today"}[top]
+                  "LOW": "No critical security events today",
+                  "INFO": "No critical security events today"}[top]
     else:
         label, fg, bg, status = "Info", MUTED, PAGE, "Informational only"
     legend = " ".join(f'<span style="white-space:nowrap;margin-right:10px;">'

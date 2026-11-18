@@ -21,11 +21,12 @@ Every briefing has four sections, most important first:
 3. **Training, industry news and announcements**: press releases, CISO Collective,
    Industry Trends and other blog posts.
 4. **Product lifecycle**: new End of Order / End of Support announcements, then every
-   milestone due in the next `LIFECYCLE_DAYS` days (default 90). Both are grouped by
-   product family, most commonly deployed first: FortiGate / FortiOS, FortiSwitch,
-   FortiAP, FortiManager, FortiAnalyzer, FortiClient, FortiToken, FortiAuthenticator,
-   FortiExtender, FortiCare/cloud services, then the rest alphabetically, with
-   accessories, modules and training last. The upcoming list is recalculated every
+   milestone due in the next `LIFECYCLE_DAYS` days (default 90). Both are ordered by
+   criticality first, then Hardware & VM / Software / Services, then product family
+   (most commonly deployed first), then date. Only the major platforms get a
+   color: FortiGate / FortiOS, FortiSwitch, FortiAP / Wireless, FortiManager,
+   FortiAnalyzer and FortiClient / EMS (the `MAJOR` list in `job/pre.sh`). All other
+   products are grey. The upcoming list is recalculated every
    run, so the email is sent daily while anything is upcoming. It comes last
    because it is planning information, not a security emergency.
 
@@ -36,8 +37,9 @@ apps that don't show HTML. Items are color-coded by importance:
 |---|---|---|
 | Red | `URGENT` | Security only: critical (CVSS 9+), actively exploited or CISA KEV |
 | Orange | `HIGH` | Security only: high severity (CVSS 7-8.9), CSBs that need action, exploited outbreaks |
-| Yellow | `MEDIUM` | Medium severity; End of Support within 30 days |
-| Green | `LOW` | Informational: threat research, firmware, signatures, news, other lifecycle dates |
+| Yellow | `MEDIUM` | Medium severity; End of Support within 30 days for a major platform |
+| Green | `LOW` | Informational: threat research, firmware, signatures, news, other lifecycle dates for major platforms |
+| Grey | `INFO` | No priority: lifecycle dates for products that are not major platforms |
 
 Lifecycle items are never red or orange. The banner at the top follows the TL;DR,
 not the most severe item in the email. It is red only when that day's feeds report

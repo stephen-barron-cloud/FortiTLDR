@@ -12,7 +12,9 @@ Read new-items.md in the current folder. It is already sorted into parts:
   announcements, then every item with a milestone in the upcoming window. Both are
   grouped by product family, most commonly deployed first (FortiGate / FortiOS,
   FortiSwitch, FortiAP, FortiManager, FortiAnalyzer, FortiClient ...), and items
-  are already tagged ([MEDIUM] or [LOW]).
+  are already tagged and ordered by criticality ([MEDIUM], [LOW], then [INFO] for
+  products that are not major platforms), then Hardware & VM / Software /
+  Services.
 
 Research:
 - Do not fetch support.fortinet.com links. They require a login; use the title and
@@ -43,7 +45,10 @@ it in the email, and tag every item in sections 2, 3 and 4:
 - [MEDIUM] (yellow): medium severity, other outbreak alerts and threat signals,
   End of Support within 30 days.
 - [LOW] (green): informational: threat research posts, firmware and signature
-  updates, news, press releases, training, other lifecycle dates.
+  updates, news, press releases, training, other lifecycle dates for major
+  platforms.
+- [INFO] (grey): no priority. Lifecycle dates for products that are not major
+  platforms. Used only on lifecycle lines, which already carry it.
 Never tag a lifecycle item [URGENT] or [HIGH]. Lifecycle lines in new-items.md
 already carry their tag; keep it unchanged.
 
@@ -57,9 +62,9 @@ A paragraph of 3-5 short sentences, in this order: the items you list under
 is "None"); one clause on other notable security items, firmware or news if there
 are any; and last, one short sentence on lifecycle using the COUNTS line in
 new-items.md written naturally (e.g. "125 End of Order / End of Support milestones
-fall in the next 90 days, 30 of them within 30 days"; never count items yourself),
-naming at most two of the soonest End of Support dates for widely deployed
-products (FortiGate, FortiOS, FortiSwitch, FortiAP, FortiManager, FortiAnalyzer).
+fall in the next 90 days, 62 of them for major platforms"; never count items
+yourself), naming at most two of the soonest End of Support dates among [MEDIUM]
+or [LOW] lifecycle items (major platforms). Never mention [INFO] items in the TL;DR.
 
 Start the paragraph (on the line after the heading) with the tag that sets the
 color of the whole email's status banner. Choose it ONLY from security items that
@@ -104,15 +109,14 @@ when both exist. Write "Nothing new today." if empty.
 
 # 4. Product lifecycle: End of Order / End of Support
 ## New announcements
-Each new or changed lifecycle item as a bullet with its tag, in the family order
-given: product/SKU, category, Hardware & VM / Software / Services, and all its
+Each new or changed lifecycle item as a bullet with its tag, in the order given: product/SKU, category, Hardware & VM / Software / Services, and all its
 dates. For UPDATED items, say which date changed if it is clear. Write "None since
 the last report" if there are none.
 ## Upcoming (next N days)
-N as given. Keep the product-family grouping and order exactly as in new-items.md:
-a "### <family> (<count>)" heading for each, then one bullet per item sorted by
-date, starting with its tag: date, milestone, product/SKU, (Hardware & VM /
-Software / Services), days left. If an item has more than one milestone in the
+N as given. Keep the grouping and order exactly as in new-items.md: a
+"### <level>: <Hardware & VM / Software / Services> (<count>)" heading for each
+group, copied as given, then one bullet per item in the order given, starting with
+its tag: product family, date, milestone, product/SKU, days left. If an item has more than one milestone in the
 window, list them on its bullet. Include every item. You may combine items in the
 same family with the same tag, milestone and date onto one bullet when they are
 variants of one model (e.g. "FG-60F, FG-60F-BDL"); never drop an item.

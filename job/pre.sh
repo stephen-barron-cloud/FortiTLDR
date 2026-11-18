@@ -225,6 +225,13 @@ FAMILIES = [
     ("FortiADC", r"^FortiADC"),
 ]
 LAST = r"^(Accessory|Modules|Training|ProfessionalServices)$"
+# Major platforms most Fortinet customers run. Their lifecycle dates get a color;
+# every other product's dates are grey (no priority).
+MAJOR = {"FortiGate / FortiOS", "FortiSwitch", "FortiAP / Wireless", "FortiManager",
+         "FortiAnalyzer", "FortiClient / EMS"}
+GROUPS = ["Hardware & VM", "Software", "Services"]
+LEVEL_RANK = {"[URGENT]": 0, "[HIGH]": 1, "[MEDIUM]": 2, "[LOW]": 3, "[INFO]": 4}
+LEVEL_NAME = {"[MEDIUM]": "Medium", "[LOW]": "Low", "[INFO]": "Info (other products)"}
 def family(i):
     """(rank, label) for a lifecycle item; key = Category, or product name for Software."""
     key = category(i) or re.sub(r"\s+v?\d.*$", "", i["title"])
@@ -251,15 +258,22 @@ def lc_line(i, ms):
     return (f"- {i['title']}" + (f" [{cat}]" if cat else "") +
             f" ({lc_group(i['feed'])}): {dates}")
 
-# Importance tag (rendered yellow / green in the HTML email). Lifecycle dates are
-# planning items, never security emergencies, so they never get [URGENT] or [HIGH]:
-# End of Support / End of Engineering Support within 30 days -> MEDIUM,
-# everything else -> LOW.
-def lc_tag(ms):
+# Importance tag. Lifecycle dates are planning items, never security emergencies,
+# so they never get [URGENT] or [HIGH]:
+#   product not on the MAJOR list                                -> INFO (grey)
+#   major platform, End of (Engineering) Support within 30 days  -> MEDIUM (yellow)
+#   major platform, anything else                                -> LOW (green)
+def lc_tag(ms, fam):
+    if fam[1] not in MAJOR:
+        return "[INFO]"
     soon = [(n, d) for n, d in ms if today <= d <= horizon]
     if any(d <= cut and "Support" in n for n, d in soon):
         return "[MEDIUM]"
     return "[LOW]"
+
+def group_rank(i):
+    g = lc_group(i["feed"])
+    return GROUPS.index(g) if g in GROUPS else len(GROUPS)
 
 upcoming, seen_rows = [], set()   # (family, soonest date, line)
 for url, items in parsed:
@@ -273,9 +287,12 @@ for url, items in parsed:
             continue
         seen_rows.add(row)
         first = min(d for _, d in soon)
-        upcoming.append((family(i), first,
-                         lc_tag(ms) + " " + lc_line(i, ms)[2:]))
-upcoming.sort(key=lambda u: (u[0], u[1], u[2]))
+        tag = lc_tag(ms, family(i))
+        upcoming.append((family(i), first, f"{tag} {family(i)[1]}: " + lc_line(i, ms)[2:],
+                         tag, lc_group(i["feed"]), group_rank(i)))
+# Criticality first, then Hardware & VM / Software / Services, then product family
+# (most deployed first), then date.
+upcoming.sort(key=lambda u: (LEVEL_RANK[u[3]], u[5], u[0], u[1], u[2]))
 
 if not new and not upd and not upcoming:
     os.replace(PENDING, STATE)
@@ -297,7 +314,9 @@ def item_block(label, i):
 def blocks_for(pred):
     return [item_block(l, i) for l, g in (("NEW", new), ("UPDATED", upd)) for i in g if pred(i)]
 
-lc_changed = sorted([i for i in new + upd if is_lifecycle(i)], key=lambda i: family(i))
+lc_changed = sorted([i for i in new + upd if is_lifecycle(i)],
+                    key=lambda i: (LEVEL_RANK[lc_tag(milestones(i), family(i))],
+                                   group_rank(i), family(i)))
 sec = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "security"]
 ups = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "updates"]
 news = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "news"]
@@ -319,29 +338,30 @@ if lc_changed:
     blocks.append("## Lifecycle announcements that are NEW or CHANGED since the last run\n")
     for i in lc_changed:
         label = "NEW" if i in new else "UPDATED"
-        blocks.append(f"- {lc_tag(milestones(i))} [{label}] {family(i)[1]}: "
+        blocks.append(f"- {lc_tag(milestones(i), family(i))} [{label}] {family(i)[1]}: "
                       + lc_line(i, milestones(i))[2:])
     blocks.append("")
 else:
     blocks.append("No new or changed lifecycle announcements since the last run.\n")
 if days > 0:
     n30 = sum(1 for u in upcoming if u[1] <= cut)
-    fams = []
+    nmajor = sum(1 for u in upcoming if u[3] != "[INFO]")
+    sections = []
     for u in upcoming:
-        if u[0][1] not in fams:
-            fams.append(u[0][1])
+        if (u[3], u[4]) not in sections:
+            sections.append((u[3], u[4]))
     blocks.append(f"## Upcoming lifecycle milestones: {len(upcoming)} item(s) with a date "
                   f"between {today.isoformat()} and {horizon.isoformat()} (next {days} days)\n"
                   f"COUNTS (exact, computed by the script; use these, do not recount): "
-                  f"{len(upcoming)} in the next {days} days, {n30} of them within 30 days.\n"
-                  "Grouped by product family, most commonly deployed first; sorted by the "
-                  "soonest upcoming date within each family. All of each item's milestones "
-                  "are shown.\n")
-    for f in fams:
-        rows = [u[2] for u in upcoming if u[0][1] == f]
-        k = sum(1 for u in upcoming if u[0][1] == f and u[1] <= cut)
-        rows = ["- " + r for r in rows]
-        blocks.append(f"### {f} ({len(rows)}" + (f", {k} within 30 days" if k else "") + ")\n"
+                  f"{len(upcoming)} in the next {days} days, {n30} of them within 30 days; "
+                  f"{nmajor} are for major platforms ({', '.join(sorted(MAJOR))}).\n"
+                  "Grouped by criticality ([MEDIUM], then [LOW], then [INFO] for products "
+                  "that are not major platforms), then Hardware & VM / Software / Services; "
+                  "within each group by product family, most deployed first, then by "
+                  "soonest date. All of each item's milestones are shown.\n")
+    for tag, grp in sections:
+        rows = ["- " + u[2] for u in upcoming if u[3] == tag and u[4] == grp]
+        blocks.append(f"### {LEVEL_NAME.get(tag, tag)}: {grp} ({len(rows)})\n"
                       + "\n".join(rows) + "\n")
 
 if skipped:
