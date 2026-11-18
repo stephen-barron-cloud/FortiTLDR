@@ -26,8 +26,8 @@ Firmware releases
 ...
 ```
 
-**Product lifecycle comes first.** Every briefing lists new End of Order / End of
-Support announcements and every Fortinet hardware, software and service milestone
+**Critical security announcements come first, then product lifecycle.** Every
+briefing lists new End of Order / End of Support announcements and every Fortinet hardware, software and service milestone
 due in the next 90 days (configurable), minus anything on your ignore list. Because
 upcoming milestones almost always exist, the email arrives daily. Set
 `LIFECYCLE_DAYS=0` to go back to emailing only when a feed changes; then quiet days

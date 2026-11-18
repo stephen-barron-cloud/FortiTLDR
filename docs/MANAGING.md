@@ -10,17 +10,19 @@ Changes to these files apply on the next run. No restart is needed.
 
 ## What the briefing covers
 
-Product lifecycle comes first. Every briefing lists:
+Critical security announcements come first, then product lifecycle. Every briefing lists:
 
-1. **New lifecycle announcements**: End of Order / End of Support items that are new
+1. **Security action needed**: critical or high severity PSIRT advisories and
+   anything actively exploited or in CISA KEV, with the fixed version to upgrade to.
+2. **New lifecycle announcements**: End of Order / End of Support items that are new
    or changed in Fortinet's Hardware & VM, Software and Services lifecycle feeds.
-2. **Upcoming milestones**: every product whose End of Order, End of Engineering
+3. **Upcoming milestones**: every product whose End of Order, End of Engineering
    Support, Last Service Extension or End of Support date falls in the next
    `LIFECYCLE_DAYS` days (default 90), split into "within 30 days" and later. This
    is recalculated on every run, so the email is sent daily while anything is
    upcoming.
-3. Security advisories and other new items (PSIRT, outbreak alerts, firmware, CSBs,
-   signature updates), in shorter form.
+4. **Other updates**: advisory details, outbreak alerts, firmware, CSBs and
+   signature updates, in shorter form.
 
 Products you don't care about can be removed with the `ignore` file (below). To change
 the window, set `LIFECYCLE_DAYS` in `config.env` and re-run `sudo ./install.sh`
