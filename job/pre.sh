@@ -243,16 +243,29 @@ if lc_new or lc_upd:
 else:
     blocks.append("No new or changed lifecycle announcements since the last run.\n")
 if days > 0:
+    groups = ("Hardware & VM", "Software", "Services", "Other")
+    grp_of = lambda g: g if g in groups[:3] else "Other"
+    cut = today + datetime.timedelta(days=30)
+    windows = [("Within 30 days", [u for u in upcoming if u[0] <= cut]),
+               ("31 days and later", [u for u in upcoming if u[0] > cut])]
+    def tally(rows):
+        parts = [f"{g} {n}" for g in groups if (n := sum(1 for u in rows if grp_of(u[1]) == g))]
+        return f"{len(rows)}" + (f" ({', '.join(parts)})" if parts else "")
     blocks.append(f"# Upcoming lifecycle milestones: {len(upcoming)} item(s) with a date "
                   f"between {today.isoformat()} and {horizon.isoformat()} (next {days} days)\n"
-                  "Sorted by the soonest upcoming date. All of each item's milestones are shown.\n")
-    for g in ("Hardware & VM", "Software", "Services"):
-        rows = [r for _, grp, r in upcoming if grp == g]
-        if rows:
-            blocks.append(f"## {g} ({len(rows)})\n" + "\n".join(rows) + "\n")
-    rows = [r for _, grp, r in upcoming if grp not in ("Hardware & VM", "Software", "Services")]
-    if rows:
-        blocks.append(f"## Other ({len(rows)})\n" + "\n".join(rows) + "\n")
+                  f"COUNTS (exact, computed by the script; quote these, do not recount): "
+                  f"total {tally(upcoming)}; within 30 days {tally(windows[0][1])}; "
+                  f"31 days and later {tally(windows[1][1])}.\n"
+                  "Items are placed by their soonest upcoming date and sorted by it. "
+                  "All of each item's milestones are shown.\n")
+    for wname, wrows in windows:
+        if not wrows:
+            continue
+        blocks.append(f"## {wname} ({len(wrows)})\n")
+        for g in groups:
+            rows = [r for _, grp, r in wrows if grp_of(grp) == g]
+            if rows:
+                blocks.append(f"### {g} ({len(rows)})\n" + "\n".join(rows) + "\n")
 
 blocks.append("# PART 2: OTHER NEW OR UPDATED ITEMS (security, firmware, bulletins, signatures)\n")
 if other_new or other_upd:
@@ -270,7 +283,7 @@ open("new-items.md", "w").write("\n".join(blocks))
 domains = sorted({urlparse(i["link"]).hostname for i in new + upd if urlparse(i["link"]).hostname})
 open("tools", "w").write("Read\n" + "".join(f"WebFetch(domain:{d})\n" for d in domains))
 
-soon30 = sum(1 for d, _, _ in upcoming if (d - today).days <= 30)
+soon30 = sum(1 for d, _, _ in upcoming if (d - today).days <= 30)   # same rule as COUNTS
 subj = f"EoL/EoS: {len(lc_new) + len(lc_upd)} new/changed, {len(upcoming)} due in {days}d"
 if days > 30:
     subj += f" ({soon30} in 30d)"

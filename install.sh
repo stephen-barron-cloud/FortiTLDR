@@ -169,7 +169,8 @@ cat <<DONE
 Test email:
   printf 'Subject: FortiTLDR test\n\nIt works.\n' | sudo -u claude-agent -H msmtp ${FORTITLDR_TO}
 
-First run (records today's items as the baseline, no email):
+First run (records today's feed items as already seen without reporting them,
+and emails the End of Order / End of Support milestones due in the next ${LIFECYCLE_DAYS} days):
   sudo systemctl start claude-job@${JOB}
 
 Full test (pretends the newest item is new, sends a real digest):

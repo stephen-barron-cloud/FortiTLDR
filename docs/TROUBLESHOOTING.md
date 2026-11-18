@@ -72,7 +72,7 @@ sudo tail /home/claude-agent/.msmtp.log
 |---|---|
 | Authentication failed | Wrong SMTP token, or a token made for a different address (Proton tokens are per address). Re-run `install.sh` and answer **y** |
 | Connection timed out | Port 587 is blocked: `sudo ufw allow out 587/tcp` |
-| Nothing in the log | Nothing changed, so no email was sent. Force a test with `force-latest` (see [MANAGING.md](MANAGING.md)) |
+| Nothing in the log | Nothing changed and no lifecycle milestone is upcoming (or `LIFECYCLE_DAYS=0`), so no email was sent. Force a test with `force-latest` (see [MANAGING.md](MANAGING.md)) |
 | The email is in spam | Add a filter or allow rule for your `[FortiTLDR]` subject tag |
 
 If an email fails, nothing is marked as seen, so the same items are retried on the

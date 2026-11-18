@@ -52,7 +52,9 @@ One URL per line; `#` comments a line out. Save with **Ctrl+O, Enter**, exit wit
   with dates, counters or ads in them can trigger an email every day, so use a feed
   when the site has one.
 - **A new URL** is baselined silently on its first run, so you only hear about it
-  once something changes.
+  once something changes. (Lifecycle milestones from a new lifecycle feed still
+  appear in the upcoming list right away, because that list is worked out from
+  dates, not from what is new.)
 - **A URL that fails** is listed at the bottom of that day's email. The others are
   still checked.
 
@@ -216,7 +218,10 @@ sudo userdel -r claude-agent
 sudo rm -rf /home/claude-agent/agents/jobs/fortitldr/{seen.json,snapshots}
 ```
 
-The next run re-baselines every feed silently.
+The next run records every current feed item as seen without reporting it, like a
+fresh install. It still emails the upcoming End of Order / End of Support list
+(unless `LIFECYCLE_DAYS=0`), so expect a briefing with "None" in the security and
+new-announcement sections.
 
 ## Keep Claude Code up to date
 

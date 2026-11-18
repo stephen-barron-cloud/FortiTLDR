@@ -27,7 +27,9 @@ Write the email body in plain text (no Markdown tables, no HTML), in this order:
 1. TL;DR: 2-4 sentences. If anything qualifies for SECURITY ACTION NEEDED, start
    with it (product, issue, what to do). Then lifecycle: how many new/changed
    lifecycle announcements, how many milestones fall in the next 30 days and in the
-   whole window, and the most notable ones (e.g. a FortiGate model or FortiOS
+   whole window (take these numbers from the COUNTS line in new-items.md and write
+   them naturally, e.g. "125 milestones fall in the next 90 days, 30 of them within
+   30 days"; never count items yourself), and the most notable ones (e.g. a FortiGate model or FortiOS
    version reaching End of Support).
 
 2. SECURITY ACTION NEEDED: only part 2 items that clearly need action (critical or
@@ -46,8 +48,9 @@ Write the email body in plain text (no Markdown tables, no HTML), in this order:
    last report" if there are none.
 
 4. UPCOMING END OF ORDER / END OF SUPPORT (next N days, N as given in new-items.md):
-   - Start with "Within 30 days", then "31 days and later", each grouped under
-     Hardware & VM, Software and Services, sorted by date.
+   - Keep the split already made in new-items.md: "Within 30 days", then "31 days
+     and later", each grouped under Hardware & VM, Software and Services, sorted by
+     date. Do not move items between the two; use the counts given there.
    - One line per item: date, milestone, product/SKU [category], and the number of
      days left, e.g. "2026-12-14 End of Order: FortiGate-60F [FortiGate] (26 days)".
      If an item has more than one milestone in the window, list them on its line.

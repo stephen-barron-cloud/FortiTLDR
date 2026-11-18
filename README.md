@@ -115,7 +115,8 @@ Test it:
 # Email works?
 printf 'Subject: FortiTLDR test\n\nIt works.\n' | sudo -u claude-agent -H msmtp you@yourdomain.com
 
-# First run: records today's items as the baseline (no email)
+# First run: records today's feed items as already seen (they are not reported),
+# and emails the End of Order / End of Support milestones due in the next 90 days
 sudo systemctl start claude-job@fortitldr
 
 # Full test: pretends the newest item is new, and sends a real briefing
