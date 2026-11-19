@@ -12,6 +12,11 @@ https://filestore.fortinet.com/fortiguard/rss/outbreakalert.xml
 # Threat Signal reports: emerging threats and recommended actions
 https://filestore.fortinet.com/fortiguard/rss/threatsignal.xml
 
+# Intruder CVEMon: the top 10 trending CVEs across all vendors, updated hourly
+# (Fortinet CVEs are reported as advisories; other vendors' CVEs are reported when
+# critical: CVSS 9.0+, in CISA KEV, or exploited in the wild)
+https://cvemon.intruder.io/rss/cvetrends/latest
+
 # ---- Releases and support ----
 # Firmware releases: new builds for FortiOS, FortiManager, FortiAnalyzer, etc.
 https://support.fortinet.com/rss/firmware.xml

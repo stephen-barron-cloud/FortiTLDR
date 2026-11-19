@@ -10,14 +10,16 @@ Changes to these files apply on the next run. No restart is needed.
 
 ## What the briefing covers
 
-Every briefing has four sections, most important first:
+Every briefing has up to four sections, most important first. The training and
+news section is left out on days with nothing in it, and lifecycle becomes section 3:
 
 1. **TL;DR**: security items that need action and what to do, a clause on other
    news, and one short sentence on upcoming lifecycle dates.
 2. **Security**: what needs action (critical/high PSIRT advisories, anything
    exploited or in CISA KEV, CSBs that need you to act), each with a "More info:"
-   link; then other advisories, outbreak alerts, threat signals and Threat Research
-   posts; then firmware releases and signature updates.
+   link; then critical CVEs trending across the internet for other vendors' products
+   (see below); then other advisories, outbreak alerts, threat signals and Threat
+   Research posts; then firmware releases and signature updates.
 3. **Training, industry news and announcements**: press releases, CISO Collective,
    Industry Trends and other blog posts.
 4. **Product lifecycle**: new End of Order / End of Support announcements, then every
@@ -25,10 +27,29 @@ Every briefing has four sections, most important first:
    criticality first, then Hardware & VM / Software / Services, then product family
    (most commonly deployed first), then date. Only the major platforms get a
    color: FortiGate / FortiOS, FortiSwitch, FortiAP / Wireless, FortiManager,
-   FortiAnalyzer and FortiClient / EMS (the `MAJOR` list in `job/pre.sh`). All other
-   products are grey. The upcoming list is recalculated every
+   FortiAnalyzer, FortiClient / EMS and FortiAuthenticator (the `MAJOR` list in
+   `job/pre.sh`). All other products are grey. The upcoming list is recalculated every
    run, so the email is sent daily while anything is upcoming. It comes last
    because it is planning information, not a security emergency.
+
+### Trending CVEs from all vendors
+
+The Intruder CVEMon feed lists the 10 CVEs most discussed online right now, for any
+vendor. Your customers run that software behind Fortinet gear, so `job/pre.sh` looks
+up each new one in NVD (CVSS score, publish date) and the CISA Known Exploited
+Vulnerabilities (KEV) catalog, and marks it a **new threat** (published or added to
+KEV in the last 14 days, `FRESH_DAYS`) or an **old threat trending again**.
+
+- Fortinet CVEs are reported like any PSIRT advisory.
+- Other vendors' CVEs are listed under "Trending threats from other vendors" only
+  when critical: CVSS 9.0+, in CISA KEV, or exploited in the wild. Each says which
+  Fortinet layer is relevant (IPS, FortiWeb, FortiEDR ...).
+- Colors: new and exploited = red; new = orange; old but exploited = orange; old =
+  yellow. **An old threat never turns the banner red**, however exploited it is:
+  trending only means people are talking about it again.
+
+If NVD or CISA can't be reached (see [FIREWALL.md](FIREWALL.md)), the briefing still
+goes out with severity marked unknown.
 
 The email is dark-themed HTML in a neutral system font, with a plain-text version for mail
 apps that don't show HTML. Items are color-coded by importance:
@@ -37,7 +58,7 @@ apps that don't show HTML. Items are color-coded by importance:
 |---|---|---|
 | Red | `URGENT` | Security only: critical (CVSS 9+), actively exploited or CISA KEV |
 | Orange | `HIGH` | Security only: high severity (CVSS 7-8.9), CSBs that need action, exploited outbreaks |
-| Yellow | `MEDIUM` | Medium severity; End of Support within 30 days for a major platform |
+| Yellow | `MEDIUM` | Medium severity; End of Support or End of Engineering Support within 30 days for FortiGate 40-1000 series, FortiGate VMs, FortiOS, FortiSwitch below the 2000 series, FortiAP, FortiAuthenticator, FortiAnalyzer or FortiManager (`medium_eligible` in `job/pre.sh`) |
 | Green | `LOW` | Informational: threat research, firmware, signatures, news, other lifecycle dates for major platforms |
 | Grey | `INFO` | No priority: lifecycle dates for products that are not major platforms |
 

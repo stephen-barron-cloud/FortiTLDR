@@ -8,7 +8,7 @@ as new on the next run (for testing the email pipeline).
 Product lifecycle items (End of Order / End of Support dates) whose milestones fall
 within the next N days (file 'lifecycle-days', default 90; 0 = off) are listed every
 run, so the briefing is sent daily while anything is upcoming."""
-import datetime, difflib, hashlib, html, json, os, re, sys, urllib.request
+import datetime, difflib, hashlib, html, json, os, re, sys, time, urllib.request
 import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
 
@@ -70,11 +70,15 @@ def parse(url, raw):
             else:
                 continue
             items.append(dict(guid=guid, title=title, link=link, date=date, desc=desc,
-                              src=src or url, hash=sha(title + "\n" + desc)))
+                              src=src or url, hash=sha(title + "\n" + VOLATILE.sub("", desc))))
         return items
     title, body = page_text(raw)
     return [dict(guid="page:" + url, title=title or url, link=url, date="", desc="",
                  src=url, hash=sha(body), body=body)]
+
+# Parts of an item that change without the item really changing; left out of the
+# hash so they don't report the item as UPDATED (e.g. CVEMon's hourly Hype Score).
+VOLATILE = re.compile(r"Hype Score:\s*\d+")
 
 feeds = [l.strip() for l in open("feeds") if l.strip() and not l.strip().startswith("#")]
 try:
@@ -183,6 +187,108 @@ for i in skipped:
 merged["__feeds__"] = sorted(known | set(ok))
 json.dump(merged, open(PENDING, "w"), indent=1)
 
+# ---- Severity of trending CVEs from all vendors (Intruder CVEMon) ----
+# CVEMon items carry no CVSS score or exploitation status, so each new or updated one
+# is looked up in NVD (CVSS) and the CISA Known Exploited Vulnerabilities catalog.
+# The result is added to the item's summary. A failed lookup (e.g. the host is not on
+# your firewall allowlist) is noted there and never stops the run.
+NVD = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId="
+KEV = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
+CVE_ID = re.compile(r"CVE-\d{4}-\d{4,}", re.I)
+# A trending CVE is a NEW threat if NVD published it, or CISA added it to KEV, within
+# this many days. Anything older is an OLD threat that is trending again: still
+# reported, but it never turns the briefing red.
+FRESH_DAYS = 14
+
+def fetch_json(url, timeout=20):
+    with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=timeout) as r:
+        return json.load(r)
+
+def to_date(s):
+    try:
+        return datetime.date.fromisoformat((s or "")[:10])
+    except ValueError:
+        return None
+
+def nvd_lookup(cve):
+    """(CVSS text or None, publish date or None) from NVD."""
+    vulns = fetch_json(NVD + cve).get("vulnerabilities") or []
+    rec = vulns[0]["cve"] if vulns else {}
+    metrics, cvss = rec.get("metrics", {}), None
+    for key in ("cvssMetricV40", "cvssMetricV31", "cvssMetricV30", "cvssMetricV2"):
+        ms = metrics.get(key) or []
+        if ms:
+            m = next((x for x in ms if x.get("type") == "Primary"), ms[0])
+            d = m["cvssData"]
+            sev = d.get("baseSeverity") or m.get("baseSeverity", "")
+            cvss = f"{d.get('baseScore')} {sev} (CVSS v{d.get('version')})"
+            break
+    return cvss, to_date(rec.get("published"))
+
+cve_items = [i for i in new + upd if "cvemon.intruder.io" in i["feed"].lower()]
+if cve_items:
+    try:
+        kev = {v["cveID"].upper(): v for v in fetch_json(KEV, 15)["vulnerabilities"]}
+    except Exception as e:
+        kev = None
+        print(f"WARN CISA KEV lookup failed: {e}", file=sys.stderr)
+    # NVD is often slow or throttled: retry each CVE once, and only give up on NVD
+    # for the rest of the run after two CVEs in a row fail (it is likely blocked).
+    nvd_fails, first = 0, True
+    for i in cve_items:
+        m = CVE_ID.search(i["title"])
+        if not m:
+            continue
+        cve, facts, cvss, published = m.group(0).upper(), [], None, None
+        for attempt in range(2 if nvd_fails < 2 else 0):
+            if not first:
+                time.sleep(6.5)   # NVD allows 5 requests per 30 seconds without an API key
+            first = False
+            try:
+                score, published = nvd_lookup(cve)
+                cvss = "CVSS " + (score or "not yet scored by NVD")
+                nvd_fails = 0
+                break
+            except Exception as e:
+                print(f"WARN NVD lookup for {cve} failed (try {attempt + 1}): {e}",
+                      file=sys.stderr)
+        else:
+            if nvd_fails < 2:
+                nvd_fails += 1
+        facts.append(cvss or "CVSS unknown (NVD lookup failed)")
+        now = datetime.date.today()
+        age = lambda d: (now - d).days
+        ago = lambda d: f"{age(d)} day{'' if age(d) == 1 else 's'} ago"
+        if published:
+            facts.append(f"published {published.isoformat()} ({ago(published)})")
+        kev_added = None
+        if kev is None:
+            facts.append("CISA KEV status unknown (lookup failed)")
+        elif cve in kev:
+            k = kev[cve]
+            kev_added = to_date(k.get("dateAdded"))
+            facts.append(f"IN CISA KEV (known exploited), added {k.get('dateAdded')}"
+                         + (f" ({ago(kev_added)})" if kev_added else "")
+                         + f": {k.get('vendorProject')} {k.get('product')}"
+                         + ("; used in ransomware campaigns"
+                            if k.get("knownRansomwareCampaignUse") == "Known" else ""))
+        else:
+            facts.append("not in CISA KEV")
+        # Freshness verdict. With no NVD date and no KEV entry, the CVE year is the
+        # only clue: a CVE from an earlier year is old news.
+        recent = [d for d in (published, kev_added) if d and age(d) <= FRESH_DAYS]
+        if recent:
+            status = "NEW THREAT"
+        elif published or kev_added or int(cve.split("-")[1]) < now.year:
+            first_seen = min(d for d in (published, kev_added) if d) if (published or kev_added) else None
+            status = ("OLD THREAT, trending again (known since "
+                      + (str(first_seen.year) if first_seen else cve.split("-")[1]) + ")")
+        else:
+            status = "NEW THREAT (date unconfirmed)"
+        i["desc"] = ((i["desc"] or "n/a") + "\n- Looked up by the script: " + "; ".join(facts)
+                     + f"\n- Status: {status}")
+        i["nvd"] = "https://nvd.nist.gov/vuln/detail/" + cve
+
 # ---- Upcoming product lifecycle milestones ----
 MILESTONE = re.compile(r"(End of Order|End of Engineering Support|Last Service Extension|"
                        r"End of Support):\s*(\d{4}-\d{2}-\d{2})")
@@ -228,7 +334,23 @@ LAST = r"^(Accessory|Modules|Training|ProfessionalServices)$"
 # Major platforms most Fortinet customers run. Their lifecycle dates get a color;
 # every other product's dates are grey (no priority).
 MAJOR = {"FortiGate / FortiOS", "FortiSwitch", "FortiAP / Wireless", "FortiManager",
-         "FortiAnalyzer", "FortiClient / EMS"}
+         "FortiAnalyzer", "FortiClient / EMS", "FortiAuthenticator"}
+# Within the major platforms, only these products turn [MEDIUM] when End of Support
+# is within 30 days (matched on the item title); other major products stay [LOW].
+def medium_eligible(title):
+    t = title.strip()
+    m = re.match(r"FortiGate-(\d+)", t, re.I)          # FortiGate 40-1000 series
+    if m:
+        return 40 <= int(m.group(1)) < 1100
+    if re.match(r"FortiGate-VM", t, re.I):              # FortiGate VMs
+        return True
+    if re.match(r"FortiOS\b", t, re.I):                 # FortiOS releases
+        return True
+    m = re.match(r"FortiSwitch-(\d+)", t, re.I)        # FortiSwitch below 2000 series
+    if m:
+        return int(m.group(1)) < 2000
+    return bool(re.match(r"(FortiAP|FortiAuthenticator|FortiAnalyzer|FortiManager)"
+                         r"(-|\s+v?\d|$)", t, re.I))
 GROUPS = ["Hardware & VM", "Software", "Services"]
 LEVEL_RANK = {"[URGENT]": 0, "[HIGH]": 1, "[MEDIUM]": 2, "[LOW]": 3, "[INFO]": 4}
 LEVEL_NAME = {"[MEDIUM]": "Medium", "[LOW]": "Low", "[INFO]": "Info (other products)"}
@@ -261,13 +383,13 @@ def lc_line(i, ms):
 # Importance tag. Lifecycle dates are planning items, never security emergencies,
 # so they never get [URGENT] or [HIGH]:
 #   product not on the MAJOR list                                -> INFO (grey)
-#   major platform, End of (Engineering) Support within 30 days  -> MEDIUM (yellow)
-#   major platform, anything else                                -> LOW (green)
-def lc_tag(ms, fam):
+#   medium_eligible product, End of (Engineering) Support within 30 days -> MEDIUM
+#   any other major platform item                                         -> LOW (green)
+def lc_tag(ms, fam, title):
     if fam[1] not in MAJOR:
         return "[INFO]"
     soon = [(n, d) for n, d in ms if today <= d <= horizon]
-    if any(d <= cut and "Support" in n for n, d in soon):
+    if medium_eligible(title) and any(d <= cut and "Support" in n for n, d in soon):
         return "[MEDIUM]"
     return "[LOW]"
 
@@ -287,7 +409,7 @@ for url, items in parsed:
             continue
         seen_rows.add(row)
         first = min(d for _, d in soon)
-        tag = lc_tag(ms, family(i))
+        tag = lc_tag(ms, family(i), i["title"])
         upcoming.append((family(i), first, f"{tag} {family(i)[1]}: " + lc_line(i, ms)[2:],
                          tag, lc_group(i["feed"]), group_rank(i)))
 # Criticality first, then Hardware & VM / Software / Services, then product family
@@ -302,7 +424,7 @@ if not new and not upd and not upcoming:
 # Non-lifecycle items, by the kind of feed they came from.
 def kind(i):
     u = i["feed"].lower()
-    if re.search(r"/rss/(ir|outbreakalert|threatsignal|epvuln|fmwp)\.xml$|csb\.xml$|/blog/threat-research|/blog/psirt", u):
+    if re.search(r"/rss/(ir|outbreakalert|threatsignal|epvuln|fmwp)\.xml$|csb\.xml$|/blog/threat-research|/blog/psirt|cvemon\.intruder\.io", u):
         return "security"
     if re.search(r"/rss/firmware\.xml$|filestore\.fortinet\.com/fortiguard/rss/", u):
         return "updates"
@@ -310,12 +432,13 @@ def kind(i):
 
 def item_block(label, i):
     return (f"## [{label}] {i['title']}\n- Source: {i['src']}\n- Link: {i['link']}\n"
-            f"- Published: {i['date'] or 'n/a'}\n- Summary: {i['desc'] or 'n/a'}\n")
+            + (f"- NVD page: {i['nvd']}\n" if i.get("nvd") else "")
+            + f"- Published: {i['date'] or 'n/a'}\n- Summary: {i['desc'] or 'n/a'}\n")
 def blocks_for(pred):
     return [item_block(l, i) for l, g in (("NEW", new), ("UPDATED", upd)) for i in g if pred(i)]
 
 lc_changed = sorted([i for i in new + upd if is_lifecycle(i)],
-                    key=lambda i: (LEVEL_RANK[lc_tag(milestones(i), family(i))],
+                    key=lambda i: (LEVEL_RANK[lc_tag(milestones(i), family(i), i["title"])],
                                    group_rank(i), family(i)))
 sec = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "security"]
 ups = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "updates"]
@@ -324,7 +447,7 @@ news = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "news"]
 blocks = [f"# Today is {today.isoformat()}\n"]
 
 blocks.append("# PART 1: SECURITY (PSIRT advisories, outbreak alerts, threat signals, "
-              "threat research, support bulletins)\n")
+              "threat research, support bulletins, trending CVEs from all vendors)\n")
 blocks += blocks_for(lambda i: i in sec) or ["None today.\n"]
 blocks.append("# PART 1b: FIRMWARE RELEASES AND SIGNATURE UPDATES\n")
 blocks += blocks_for(lambda i: i in ups) or ["None today.\n"]
@@ -338,7 +461,7 @@ if lc_changed:
     blocks.append("## Lifecycle announcements that are NEW or CHANGED since the last run\n")
     for i in lc_changed:
         label = "NEW" if i in new else "UPDATED"
-        blocks.append(f"- {lc_tag(milestones(i), family(i))} [{label}] {family(i)[1]}: "
+        blocks.append(f"- {lc_tag(milestones(i), family(i), i['title'])} [{label}] {family(i)[1]}: "
                       + lc_line(i, milestones(i))[2:])
     blocks.append("")
 else:

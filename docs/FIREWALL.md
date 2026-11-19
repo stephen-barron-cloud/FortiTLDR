@@ -10,6 +10,8 @@ FortiTLDR's traffic is outbound.
 | Claude (required) | `api.anthropic.com` → `160.79.104.0/23`, `153.61.224.0/22` | TCP 443 |
 | Claude Code installer and updates | `claude.ai`, `downloads.claude.ai` (CDN, so its IPs change) | TCP 443 |
 | Fortinet feeds | `filestore.fortinet.com`, `support.fortinet.com`, `pub.kb.fortinet.com`, `feeds.fortinet.com` (blogs and press releases) | TCP 443 |
+| Intruder CVEMon (trending CVEs) | `cvemon.intruder.io` (Cloudflare, so its IPs change: allow by FQDN) | TCP 443 |
+| Severity of trending CVEs | `services.nvd.nist.gov` (CVSS scores), `www.cisa.gov` (Known Exploited Vulnerabilities catalog); both are CDNs, so allow by FQDN. If blocked, the briefing still goes out, with severity marked unknown | TCP 443 |
 | Pages Claude reads for details | `fortiguard.fortinet.com`, `www.fortinet.com`, plus the hosts of any feeds you add | TCP 443 |
 | Email | your SMTP server, e.g. `smtp.protonmail.ch` | TCP 587 |
 | DNS | your resolver only | 53 |
