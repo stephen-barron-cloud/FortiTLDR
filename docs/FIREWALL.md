@@ -12,6 +12,7 @@ FortiTLDR's traffic is outbound.
 | Fortinet feeds | `filestore.fortinet.com`, `support.fortinet.com`, `pub.kb.fortinet.com`, `feeds.fortinet.com` (blogs and press releases) | TCP 443 |
 | Intruder CVEMon (trending CVEs) | `cvemon.intruder.io` (Cloudflare, so its IPs change: allow by FQDN) | TCP 443 |
 | Severity of trending CVEs | `services.nvd.nist.gov` (CVSS scores), `www.cisa.gov` (Known Exploited Vulnerabilities catalog); both are CDNs, so allow by FQDN. If blocked, the briefing still goes out, with severity marked unknown | TCP 443 |
+| CVE links in the TL;DR | `cveawg.mitre.org` (CVE.org record API: is the CVE published?). If blocked, CVE IDs are still linked to cve.org, just without the "not published" check | TCP 443 |
 | Pages Claude reads for details | `fortiguard.fortinet.com`, `www.fortinet.com`, plus the hosts of any feeds you add | TCP 443 |
 | Email | your SMTP server, e.g. `smtp.protonmail.ch` | TCP 587 |
 | DNS | your resolver only | 53 |

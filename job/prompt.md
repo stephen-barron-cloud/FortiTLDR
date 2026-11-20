@@ -27,7 +27,7 @@ Research:
 - Intruder CVEMon (cvemon.intruder.io) items are the CVEs trending across the
   internet right now, from all vendors. The admin's customers run this software
   behind Fortinet gear, so these matter even when the vendor is not Fortinet. Do
-  not fetch cvemon.intruder.io or nvd.nist.gov; use the summary and its "Looked up
+  not fetch cvemon.intruder.io, cve.org or nvd.nist.gov; use the summary and its "Looked up
   by the script" line (CVSS, publish date, CISA KEV status) and its "Status:"
   line, which the script computed: "NEW THREAT" (published or added to CISA KEV
   in the last 14 days) or "OLD THREAT, trending again (known since <year>)". Old
@@ -95,8 +95,8 @@ fall in the next 90 days, 62 of them for major platforms"; never count items
 yourself), naming at most two of the soonest End of Support dates among [MEDIUM]
 or [LOW] lifecycle items (major platforms). Never mention [INFO] items in the TL;DR.
 Write each CVE ID in the TL;DR in full (e.g. CVE-2026-12345), never as a range or
-list like "CVE-2026-1234/5"; the script links each one to its NVD page, or notes
-when NVD has not published it.
+list like "CVE-2026-1234/5"; the script links each one to its CVE.org record, or
+notes when CVE.org has not published it.
 
 Start the paragraph (on the line after the heading) with the tag that sets the
 color of the whole email's status banner. Choose it ONLY from security items that
@@ -136,9 +136,9 @@ of threat, e.g. FortiGate IPS or virtual patching for network-reachable
 services, FortiWeb for web applications, FortiMail for mail servers, FortiEDR /
 FortiClient for endpoint and local privilege escalation, and say to confirm
 FortiGuard coverage. Never invent IPS signature names or IDs. Then, indented
-under the bullet, "More info: <URL>" with the item's NVD page, and a second
-"More info:" line with its Link, both exactly as given. Leave this sub-section
-out when there are none.
+under the bullet, "More info: <URL>" with the item's CVE record (cve.org), a
+second "More info:" line with its Link, and a last "More info:" line with its NVD
+page, all exactly as given. Leave this sub-section out when there are none.
 ## Other security items
 Remaining advisories, outbreak alerts, threat signals, threat research posts and
 CSBs: one tagged bullet each (one or two sentences) with the full link.

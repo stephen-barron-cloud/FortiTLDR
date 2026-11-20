@@ -8,14 +8,15 @@ Understands only what prompt.md asks Claude to write:
   - bullet            (an indented line right after a bullet continues it)
   [URGENT] [HIGH] [MEDIUM] [LOW] [INFO] at the start of a bullet or paragraph
   **bold**, bare URLs (made clickable), blank lines between paragraphs
-  CVE IDs in the TL;DR (section 1) link to their NVD page; each is looked up in the
-  NVD API, and one NVD has not published gets "(not published on nvd.nist.gov)"
+  CVE IDs in the TL;DR (section 1) link to their CVE.org record; each is looked up
+  in the CVE.org API, and one CVE.org has not published gets "(not published on
+  cve.org)" (or "(rejected on cve.org)") instead of a link
   "-- " on its own line starts the footer
 The status banner follows the tag on the TL;DR (the first section), not the most
 severe tag anywhere in the email, so lifecycle or news items never raise it.
 Everything is HTML-escaped first, so nothing in the report can inject markup.
 All styles are inline because many email clients drop <style> blocks."""
-import datetime, html, json, re, sys, time, urllib.request
+import datetime, html, json, re, sys, time, urllib.error, urllib.request
 
 FONT = ("-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', "
         "Arial, sans-serif")
@@ -35,32 +36,39 @@ TAG = re.compile(r"^\[(URGENT|HIGH|MEDIUM|LOW|INFO)\]\s*")
 URL = re.compile(r"(https?://[^\s<>\"')\]]+[^\s<>\"').,;:\]])")
 # A URL (left alone, so CVE IDs inside links are not linked twice) or a CVE ID.
 URL_OR_CVE = re.compile(URL.pattern + r"|\b(CVE-\d{4}-\d{4,})\b", re.I)
-NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId="
-NVD_PAGE = "https://nvd.nist.gov/vuln/detail/"
-_nvd, _nvd_last, _nvd_fails = {}, [0.0], [0]
+CVE_API = "https://cveawg.mitre.org/api/cve/"   # CVE.org (CVE Program) record API
+CVE_PAGE = "https://www.cve.org/CVERecord?id="
+_cve, _cve_last, _cve_fails = {}, [0.0], [0]
 
 
-def nvd_published(cve):
-    """True if NVD has published the CVE, False if not, None if NVD can't be reached."""
-    if cve in _nvd:
-        return _nvd[cve]
-    result = None
-    for attempt in range(2 if _nvd_fails[0] < 2 else 0):   # give up after 2 failed CVEs
-        wait = 6.5 - (time.time() - _nvd_last[0])   # NVD: 5 requests / 30 s without a key
+def cve_state(cve):
+    """CVE.org record state: "PUBLISHED", "REJECTED", None if CVE.org has no published
+    record (404), or "UNKNOWN" if CVE.org can't be reached."""
+    if cve in _cve:
+        return _cve[cve]
+    result = "UNKNOWN"
+    for attempt in range(2 if _cve_fails[0] < 2 else 0):   # give up after 2 failed CVEs
+        wait = 1.0 - (time.time() - _cve_last[0])           # be gentle: 1 request a second
         if wait > 0:
             time.sleep(wait)
-        _nvd_last[0] = time.time()
+        _cve_last[0] = time.time()
         try:
-            req = urllib.request.Request(NVD_API + cve, headers={"User-Agent": "FortiTLDR"})
+            req = urllib.request.Request(CVE_API + cve, headers={"User-Agent": "FortiTLDR"})
             with urllib.request.urlopen(req, timeout=20) as r:
-                result = json.load(r).get("totalResults", 0) > 0
-            _nvd_fails[0] = 0
+                result = (json.load(r).get("cveMetadata") or {}).get("state", "PUBLISHED").upper()
+            _cve_fails[0] = 0
             break
+        except urllib.error.HTTPError as e:
+            if e.code == 404:
+                result = None
+                _cve_fails[0] = 0
+                break
+            print(f"WARN CVE.org lookup for {cve} failed (try {attempt + 1}): {e}", file=sys.stderr)
         except Exception as e:
-            print(f"WARN NVD lookup for {cve} failed (try {attempt + 1}): {e}", file=sys.stderr)
+            print(f"WARN CVE.org lookup for {cve} failed (try {attempt + 1}): {e}", file=sys.stderr)
     else:
-        _nvd_fails[0] += 1
-    _nvd[cve] = result
+        _cve_fails[0] += 1
+    _cve[cve] = result
     return result
 
 
@@ -79,9 +87,11 @@ def inline(text, cves=False):
         if not cves:
             return m.group(0)
         cve = m.group(2).upper()
-        if nvd_published(cve) is False:
-            return f'{m.group(2)} <em style="color:{MUTED};">(not published on nvd.nist.gov)</em>'
-        return link(NVD_PAGE + cve, m.group(2))   # published, or NVD unreachable
+        state = cve_state(cve)
+        if state is None or state == "REJECTED":
+            note = "not published on cve.org" if state is None else "rejected on cve.org"
+            return f'{m.group(2)} <em style="color:{MUTED};">({note})</em>'
+        return link(CVE_PAGE + cve, m.group(2))   # published, or CVE.org unreachable
     return URL_OR_CVE.sub(sub, t)
 
 

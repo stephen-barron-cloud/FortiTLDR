@@ -51,6 +51,13 @@ KEV in the last 14 days, `FRESH_DAYS`) or an **old threat trending again**.
 If NVD or CISA can't be reached (see [FIREWALL.md](FIREWALL.md)), the briefing still
 goes out with severity marked unknown.
 
+**CVE links point to CVE.org**, the official CVE List. Each trending CVE links first
+to its CVE.org record (`https://www.cve.org/CVERecord?id=...`), then its source page,
+then its NVD page. Every CVE ID in the TL;DR is linked to its CVE.org record;
+`job/render.py` checks the CVE.org API (`cveawg.mitre.org`) first and writes
+"(not published on cve.org)" or "(rejected on cve.org)" instead of a link when that
+applies. NVD is still used for CVSS scores and publish dates.
+
 The email is dark-themed HTML in a neutral system font, with a plain-text version for mail
 apps that don't show HTML. Items are color-coded by importance:
 

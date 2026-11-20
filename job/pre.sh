@@ -287,6 +287,7 @@ if cve_items:
             status = "NEW THREAT (date unconfirmed)"
         i["desc"] = ((i["desc"] or "n/a") + "\n- Looked up by the script: " + "; ".join(facts)
                      + f"\n- Status: {status}")
+        i["cve_record"] = "https://www.cve.org/CVERecord?id=" + cve
         i["nvd"] = "https://nvd.nist.gov/vuln/detail/" + cve
 
 # ---- Upcoming product lifecycle milestones ----
@@ -442,6 +443,7 @@ def kind(i):
 
 def item_block(label, i):
     return (f"## [{label}] {i['title']}\n- Source: {i['src']}\n- Link: {i['link']}\n"
+            + (f"- CVE record: {i['cve_record']}\n" if i.get("cve_record") else "")
             + (f"- NVD page: {i['nvd']}\n" if i.get("nvd") else "")
             + f"- Published: {i['date'] or 'n/a'}\n- Summary: {i['desc'] or 'n/a'}\n")
 def blocks_for(pred):
