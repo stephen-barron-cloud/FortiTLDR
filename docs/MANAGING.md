@@ -20,7 +20,7 @@ news section is left out on days with nothing in it, and lifecycle becomes secti
    link; then critical CVEs trending across the internet for other vendors' products
    (see below); then other advisories, outbreak alerts, threat signals and Threat
    Research posts; then firmware releases and signature updates.
-3. **Training, industry news and announcements**: press releases, CISO Collective,
+3. **Training, Industry News and Announcements**: press releases, CISO Collective,
    Industry Trends and other blog posts.
 4. **Product lifecycle**: new End of Order / End of Support announcements, then every
    milestone due in the next `LIFECYCLE_DAYS` days (default 90). Both are ordered by
@@ -58,7 +58,7 @@ apps that don't show HTML. Items are color-coded by importance:
 |---|---|---|
 | Red | `URGENT` | Security only: critical (CVSS 9+), actively exploited or CISA KEV |
 | Orange | `HIGH` | Security only: high severity (CVSS 7-8.9), CSBs that need action, exploited outbreaks |
-| Yellow | `MEDIUM` | Medium severity; End of Support or End of Engineering Support within 30 days for FortiGate 40-1000 series, FortiGate VMs, FortiOS, FortiSwitch below the 2000 series, FortiAP, FortiAuthenticator, FortiAnalyzer or FortiManager (`medium_eligible` in `job/pre.sh`) |
+| Yellow | `MEDIUM` | Medium severity; End of Support or End of Engineering Support within 30 days for FortiGate 40-1000 series, FortiGate VMs, FortiOS, FortiSwitch below the 2000 series, FortiAP, FortiAuthenticator, FortiAnalyzer or FortiManager (`medium_eligible` in `job/pre.sh`); any NEW End of Order / End of Support announcement for FortiGate, FortiSwitch, FortiAP, FortiAnalyzer, FortiManager or FortiSASE hardware or VMs (`NEW_HW_MEDIUM` in `job/pre.sh`) |
 | Green | `LOW` | Informational: threat research, firmware, signatures, news, other lifecycle dates for major platforms |
 | Grey | `INFO` | No priority: lifecycle dates for products that are not major platforms |
 

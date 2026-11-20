@@ -61,7 +61,9 @@ it in the email, and tag every item in sections 2, 3 and 4:
 - [HIGH] (orange): security only. High severity (CVSS 7.0-8.9), a CSB that needs
   the customer to act, or an outbreak alert / threat signal exploited in the wild.
 - [MEDIUM] (yellow): medium severity, other outbreak alerts and threat signals,
-  End of Support within 30 days.
+  End of Support within 30 days, and NEW End of Order / End of Support
+  announcements for FortiGate, FortiSwitch, FortiAP, FortiAnalyzer, FortiManager
+  or FortiSASE hardware and their VMs (already tagged in new-items.md).
 - [LOW] (green): informational: threat research posts, firmware and signature
   updates, news, press releases, training, other lifecycle dates for major
   platforms.
@@ -92,6 +94,9 @@ new-items.md written naturally (e.g. "125 End of Order / End of Support mileston
 fall in the next 90 days, 62 of them for major platforms"; never count items
 yourself), naming at most two of the soonest End of Support dates among [MEDIUM]
 or [LOW] lifecycle items (major platforms). Never mention [INFO] items in the TL;DR.
+Write each CVE ID in the TL;DR in full (e.g. CVE-2026-12345), never as a range or
+list like "CVE-2026-1234/5"; the script links each one to its NVD page, or notes
+when NVD has not published it.
 
 Start the paragraph (on the line after the heading) with the tag that sets the
 color of the whole email's status banner. Choose it ONLY from security items that
@@ -143,7 +148,7 @@ Firmware as product and version (one [LOW] bullet per product); signatures as on
 signatures.
 Skip empty sub-sections. If all of section 2 is empty, write "None today."
 
-# 3. Training, industry news and announcements
+# 3. Training, Industry News and Announcements
 Only when PART 2 has items; otherwise leave out this whole section, heading
 included. Part 2 items (press releases, CISO Collective, Industry Trends and other
 blog posts, training): one [LOW] bullet each, one or two sentences with the full

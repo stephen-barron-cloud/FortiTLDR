@@ -393,6 +393,16 @@ def lc_tag(ms, fam, title):
         return "[MEDIUM]"
     return "[LOW]"
 
+# A NEW End of Order / End of Support announcement for these families' hardware or
+# VMs (the Hardware & VM feed) is [MEDIUM], whatever its dates, so it stands out.
+NEW_HW_MEDIUM = {"FortiGate / FortiOS", "FortiSwitch", "FortiAP / Wireless",
+                 "FortiAnalyzer", "FortiManager", "FortiSASE"}
+def announce_tag(i):
+    if (i in new and lc_group(i["feed"]) == "Hardware & VM"
+            and family(i)[1] in NEW_HW_MEDIUM):
+        return "[MEDIUM]"
+    return lc_tag(milestones(i), family(i), i["title"])
+
 def group_rank(i):
     g = lc_group(i["feed"])
     return GROUPS.index(g) if g in GROUPS else len(GROUPS)
@@ -438,7 +448,7 @@ def blocks_for(pred):
     return [item_block(l, i) for l, g in (("NEW", new), ("UPDATED", upd)) for i in g if pred(i)]
 
 lc_changed = sorted([i for i in new + upd if is_lifecycle(i)],
-                    key=lambda i: (LEVEL_RANK[lc_tag(milestones(i), family(i), i["title"])],
+                    key=lambda i: (LEVEL_RANK[announce_tag(i)],
                                    group_rank(i), family(i)))
 sec = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "security"]
 ups = [i for i in new + upd if not is_lifecycle(i) and kind(i) == "updates"]
@@ -461,7 +471,7 @@ if lc_changed:
     blocks.append("## Lifecycle announcements that are NEW or CHANGED since the last run\n")
     for i in lc_changed:
         label = "NEW" if i in new else "UPDATED"
-        blocks.append(f"- {lc_tag(milestones(i), family(i), i['title'])} [{label}] {family(i)[1]}: "
+        blocks.append(f"- {announce_tag(i)} [{label}] {family(i)[1]}: "
                       + lc_line(i, milestones(i))[2:])
     blocks.append("")
 else:

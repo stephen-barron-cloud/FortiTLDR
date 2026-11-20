@@ -8,12 +8,14 @@ Understands only what prompt.md asks Claude to write:
   - bullet            (an indented line right after a bullet continues it)
   [URGENT] [HIGH] [MEDIUM] [LOW] [INFO] at the start of a bullet or paragraph
   **bold**, bare URLs (made clickable), blank lines between paragraphs
+  CVE IDs in the TL;DR (section 1) link to their NVD page; each is looked up in the
+  NVD API, and one NVD has not published gets "(not published on nvd.nist.gov)"
   "-- " on its own line starts the footer
 The status banner follows the tag on the TL;DR (the first section), not the most
 severe tag anywhere in the email, so lifecycle or news items never raise it.
 Everything is HTML-escaped first, so nothing in the report can inject markup.
 All styles are inline because many email clients drop <style> blocks."""
-import datetime, html, re, sys
+import datetime, html, json, re, sys, time, urllib.request
 
 FONT = ("-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', "
         "Arial, sans-serif")
@@ -31,13 +33,56 @@ LEVELS = {
 ORDER = ["URGENT", "HIGH", "MEDIUM", "LOW", "INFO"]
 TAG = re.compile(r"^\[(URGENT|HIGH|MEDIUM|LOW|INFO)\]\s*")
 URL = re.compile(r"(https?://[^\s<>\"')\]]+[^\s<>\"').,;:\]])")
+# A URL (left alone, so CVE IDs inside links are not linked twice) or a CVE ID.
+URL_OR_CVE = re.compile(URL.pattern + r"|\b(CVE-\d{4}-\d{4,})\b", re.I)
+NVD_API = "https://services.nvd.nist.gov/rest/json/cves/2.0?cveId="
+NVD_PAGE = "https://nvd.nist.gov/vuln/detail/"
+_nvd, _nvd_last, _nvd_fails = {}, [0.0], [0]
 
 
-def inline(text):
+def nvd_published(cve):
+    """True if NVD has published the CVE, False if not, None if NVD can't be reached."""
+    if cve in _nvd:
+        return _nvd[cve]
+    result = None
+    for attempt in range(2 if _nvd_fails[0] < 2 else 0):   # give up after 2 failed CVEs
+        wait = 6.5 - (time.time() - _nvd_last[0])   # NVD: 5 requests / 30 s without a key
+        if wait > 0:
+            time.sleep(wait)
+        _nvd_last[0] = time.time()
+        try:
+            req = urllib.request.Request(NVD_API + cve, headers={"User-Agent": "FortiTLDR"})
+            with urllib.request.urlopen(req, timeout=20) as r:
+                result = json.load(r).get("totalResults", 0) > 0
+            _nvd_fails[0] = 0
+            break
+        except Exception as e:
+            print(f"WARN NVD lookup for {cve} failed (try {attempt + 1}): {e}", file=sys.stderr)
+    else:
+        _nvd_fails[0] += 1
+    _nvd[cve] = result
+    return result
+
+
+def link(url, text=None):
+    return (f'<a href="{url}" style="color:{LINK};text-decoration:underline;'
+            f'word-break:break-all;">{text or url}</a>')
+
+
+def inline(text, cves=False):
     t = html.escape(text, quote=False)
     t = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", t)
-    return URL.sub(lambda m: f'<a href="{m.group(1)}" style="color:{LINK};'
-                             f'text-decoration:underline;word-break:break-all;">{m.group(1)}</a>', t)
+
+    def sub(m):
+        if m.group(1):
+            return link(m.group(1))
+        if not cves:
+            return m.group(0)
+        cve = m.group(2).upper()
+        if nvd_published(cve) is False:
+            return f'{m.group(2)} <em style="color:{MUTED};">(not published on nvd.nist.gov)</em>'
+        return link(NVD_PAGE + cve, m.group(2))   # published, or NVD unreachable
+    return URL_OR_CVE.sub(sub, t)
 
 
 def badge(level):
@@ -48,12 +93,12 @@ def badge(level):
             f'{label}</span>')
 
 
-def tagged(text):
+def tagged(text, cves=False):
     """Return (level or None, html) for a line that may start with a tag."""
     m = TAG.match(text)
     if not m:
-        return None, inline(text)
-    return m.group(1), badge(m.group(1)) + inline(text[m.end():])
+        return None, inline(text, cves)
+    return m.group(1), badge(m.group(1)) + inline(text[m.end():], cves)
 
 
 def render(src):
@@ -83,7 +128,7 @@ def render(src):
     def flush_para():
         nonlocal para
         if para:
-            level, h = tagged(" ".join(para))
+            level, h = tagged(" ".join(para), cves=h1_count <= 1)
             if level:
                 levels.add(level)
                 note_banner(level)
@@ -132,14 +177,15 @@ def render(src):
             if not in_list:
                 body.append('<ul style="margin:0 0 12px 0;padding:0;">')
                 in_list = True
-            level, h = tagged(m.group(1).strip())
+            level, h = tagged(m.group(1).strip(), cves=h1_count <= 1)
             if level:
                 levels.add(level)
                 note_banner(level)
             item = (level, [h])
             continue
         if item is not None and (raw.startswith("  ") or line.startswith("More info:")):
-            item[1].append(f'<span style="font-size:13px;color:{MUTED};">{inline(line.strip())}</span>')
+            item[1].append(f'<span style="font-size:13px;color:{MUTED};">'
+                           f'{inline(line.strip(), cves=h1_count <= 1)}</span>')
             continue
         close_list()
         para.append(line.strip())
